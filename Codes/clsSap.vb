@@ -50,9 +50,6 @@ Private lng_CurrentPhase&
 Private lng_added_entry_row& 'row of added entry 
  
 Private str_active_tab$ 'stores value of active tab 
- 
-'Private sht_log As Worksheet 'sheet where is log first row for header 
- 
 Private t_RunLog As ListObject 'item log 
  
 Public Enum e_ItemLoopType 
