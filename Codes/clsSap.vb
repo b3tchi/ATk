@@ -2,7 +2,7 @@ Option Explicit
  
 'Wrapper Class for simplifacation access to sap gui created by Jan Becka 09/08/2013 
  
-'Last Update 06|05|16 
+'Last Update 13|01|17
 'dependency on class clsCollection 
 'dependency for loops moved to ATk functions 
  
