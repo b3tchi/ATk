@@ -2564,7 +2564,11 @@ Function WorkbookOpen( _
                         Optional ByRef str_WindowTitle = "" _ 
                                                                 ) As Boolean 
      
+'WorkbookOpen: Open workbook
+'wbk_Source: returns reference on the opened workbook
+'str_Filename: text with file name > then path same as macro or full path of the file
      
+    
     WorkbookOpen = False 
      
     Dim strTempDate As String 
