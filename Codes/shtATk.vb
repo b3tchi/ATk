@@ -1,5 +1,7 @@
 Option Explicit 
  
+'additional comment
+
 Public Enum e_FilterType 
     e_ShowOnlyCriteriaItems = 0 
     e_HideCriteriaItems = -1 
