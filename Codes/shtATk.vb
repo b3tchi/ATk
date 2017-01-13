@@ -133,7 +133,7 @@ End Function
 End Sub 
  
 Private Function z_mLinkWord() As Boolean 
-    Application.Statusbar = "Connecting Word" 
+    Application.StatusBar = "Connecting Word"
  
     If app_Word Is Nothing Then 
         GoTo CREATE_APP 
@@ -146,7 +146,7 @@ OBJECT_ZOMBIE:
         End If 
     End If 
      
-    Application.Statusbar = False 
+    Application.StatusBar = False
 Exit Function 
  
 CREATE_APP: 
@@ -154,14 +154,14 @@ CREATE_APP:
         app_Word.Application.ScreenUpdating = False 
         app_Word.Application.DisplayAlerts = False 
         app_Word.Visible = False 
-        Application.Statusbar = False 
+        Application.StatusBar = False
 End Function 
   
 Private Function z_mLinkOutlook() As Boolean 
  
     z_mLinkOutlook = False 
  
-    Application.Statusbar = "Connecting Outlook" 
+    Application.StatusBar = "Connecting Outlook"
  
     If app_Outlook Is Nothing Then 
         GoTo CREATE_APP 
@@ -175,7 +175,7 @@ OBJECT_ZOMBIE:
     End If 
      
     z_mLinkOutlook = True 
-    Application.Statusbar = False 
+    Application.StatusBar = False
  
 Exit Function 
 CREATE_APP: 
@@ -188,7 +188,7 @@ CREATE_APP:
     bool_OutlookStarted = False 
      
     z_mLinkOutlook = True 
-    Application.Statusbar = False 
+    Application.StatusBar = False
  
 Exit Function 
 CREATE_APP2: 
@@ -201,12 +201,12 @@ CREATE_APP2:
     bool_OutlookStarted = True 
      
     z_mLinkOutlook = True 
-    Application.Statusbar = False 
+    Application.StatusBar = False
  
 Exit Function 
 FAIL: 
     z_mLinkOutlook = False 
-    Application.Statusbar = False 
+    Application.StatusBar = False
 End Function 
   
 Function z_mChDirNet(ByVal str_FilePath As String) As Boolean 
@@ -641,11 +641,11 @@ Public Sub DocumentOpen(ByRef obj_WordDoc As Object, ByVal str_FileName As Strin
  
     Call z_mLinkWord 
  
-    Application.Statusbar = "Openning Document ... " & str_DirPath & "\" & str_FileName 
+    Application.StatusBar = "Openning Document ... " & str_DirPath & "\" & str_FileName
  
     Set obj_WordDoc = app_Word.Documents.Open(str_DirPath & "\" & str_FileName) 
  
-    Application.Statusbar = False 
+    Application.StatusBar = False
  
 End Sub 
  
@@ -668,11 +668,11 @@ Public Sub DocumentSaveAs(ByVal obj_WordDoc As Object, ByVal str_FileName As Str
  
     Call z_mLinkWord 
  
-    Application.Statusbar = "Openning Saving Document as ... " & str_DirPath & "\" & str_FileName 
+    Application.StatusBar = "Openning Saving Document as ... " & str_DirPath & "\" & str_FileName
  
     obj_WordDoc.SaveAs str_DirPath & "\" & str_FileName 
  
-    Application.Statusbar = False 
+    Application.StatusBar = False
  
 End Sub 
  
@@ -680,11 +680,11 @@ Public Sub DocumentClose(ByVal obj_WordDoc As Object, ByVal bool_SaveDocument As
  
     Call z_mLinkWord 
          
-    Application.Statusbar = "Closing Document ... " & obj_WordDoc.Name & IIf(bool_SaveDocument, "", " Without Saving") 
+    Application.StatusBar = "Closing Document ... " & obj_WordDoc.Name & IIf(bool_SaveDocument, "", " Without Saving")
      
     Call obj_WordDoc.Close(bool_SaveDocument) 
  
-    Application.Statusbar = False 
+    Application.StatusBar = False
  
 End Sub 
  
@@ -809,7 +809,7 @@ Function MacroFinish()
         .ScreenUpdating = lng_ApplicationScreen 
         .EnableEvents = lng_ApplicationEvents 
         .DisplayAlerts = lng_ApplicationAlerts 
-        .Statusbar = False 
+        .StatusBar = False
     End With 
      
 'Clear Loop Containers to freeup memory 
@@ -828,7 +828,7 @@ End Function
  
 Function TableClear(ByVal tbl_Object As ListObject) 
  
-    Application.Statusbar = "Clearing Table " & tbl_Object.Name 
+    Application.StatusBar = "Clearing Table " & tbl_Object.Name
  
     On Error GoTo Err 
  
@@ -861,7 +861,7 @@ Function TableClear(ByVal tbl_Object As ListObject)
     tbl_Object.Range.Calculate 
      
 Err: 
-    Application.Statusbar = False 
+    Application.StatusBar = False
  
     Debug.Print Err.Description 
  
@@ -1085,7 +1085,7 @@ Function TableAutofilterDate( _
                         Optional ByRef str_ColumnName As String = "", _ 
                         Optional ByRef arr_CriteriaInput As Variant, _ 
                         Optional ByVal InvertedAutoFilter As e_FilterType = e_ShowOnlyCriteriaItems, _ 
-                        Optional ByRef bool_RemoveAutoFilter As Boolean = False _ 
+                        Optional ByVal RemoveAutoFilter As e_ResetFilter = e_LeaveCurrentFilters _
                         ) 
      
     On Error GoTo Err: 
@@ -1110,7 +1110,7 @@ Function TableAutofilterDate( _
     lng_ColumnIndex = tbl_Object.Range.Rows(1).Find(str_ColumnName).Column - (tbl_Object.Range.Column - 1) 
      
 'autofilter before filtering 
-    If bool_RemoveAutoFilter Then tbl_Object.Range.AutoFilter 
+    If RemoveAutoFilter Then tbl_Object.Range.AutoFilter
      
 'check if autofilter is not turned of 
     If Not tbl_Object.ShowAutoFilter Then tbl_Object.ShowAutoFilter = True 
@@ -1174,7 +1174,7 @@ Function TableAutofilter( _
                     Optional ByVal RemoveAutoFilter As e_ResetFilter = e_LeaveCurrentFilters _ 
                     ) 
                      
-    Application.Statusbar = "Filtering table: " & tbl_Object.Name & " in Column: " & str_ColumnName 
+    Application.StatusBar = "Filtering table: " & tbl_Object.Name & " in Column: " & str_ColumnName
                      
      
     Dim str_TableName$ 
@@ -1246,7 +1246,7 @@ Function TableAutofilter( _
         Operator:=xlFilterValues 
  
      
-    Application.Statusbar = False 
+    Application.StatusBar = False
      
 Exit_Function: 
  
@@ -1498,7 +1498,7 @@ Function TablePasteAppend( _
      
 'INPUT CHECK 
 'PRINTING STATE 
-    Application.Statusbar = "Pastining into table: " & str_TableName 
+    Application.StatusBar = "Pastining into table: " & str_TableName
      
      
 'FUNCTION ACTION 
@@ -1533,7 +1533,7 @@ Function TablePasteAppend( _
  
     Call tbl_Object.Range.Offset(1 + lng_CopyRowsCount).Cells(1, 1).PasteSpecial(lng_PasteType) 
  
-    Application.Statusbar = False 
+    Application.StatusBar = False
  
     tbl_Object.Range.Calculate 
  
@@ -1558,7 +1558,7 @@ Function TableAppendToTable( _
  
     Dim lng_CalcActions As Long 
      
-    Application.Statusbar = IIf(bool_Transpose, "Transposing and ", "") & "Appending table " & tbl_Copy.Name & " to " & tbl_PasteAppend.Name 
+    Application.StatusBar = IIf(bool_Transpose, "Transposing and ", "") & "Appending table " & tbl_Copy.Name & " to " & tbl_PasteAppend.Name
  
     lng_CalcActions = Application.Calculation 
     Application.Calculation = xlCalculationManual 
@@ -1739,7 +1739,7 @@ Function TableAppendToTable( _
     DoEvents 
     DoEvents 
  
-    Application.Statusbar = False 
+    Application.StatusBar = False
  
     Exit Function 
 Err: 
@@ -1758,7 +1758,7 @@ Function TableSort( _
                     ByRef Orientation As XlSortOrder _ 
                     ) 
  
-    Application.Statusbar = "Sorting table " & tbl_Object.Name & " in Column " & str_ColumnName & IIf(Orientation = xlAscending, " ascending", " descending") 
+    Application.StatusBar = "Sorting table " & tbl_Object.Name & " in Column " & str_ColumnName & IIf(Orientation = xlAscending, " ascending", " descending")
  
     With tbl_Object.Sort 
      
@@ -1776,7 +1776,7 @@ Function TableSort( _
         .Apply 
     End With 
  
-    Application.Statusbar = False 
+    Application.StatusBar = False
  
 End Function 
  
@@ -1785,7 +1785,7 @@ Function TableRemoteRefresh( _
                                                             ) As Boolean 
     On Error Resume Next 
      
-    Application.Statusbar = "Refreshing remote data in table " & tbl_Object.Name 
+    Application.StatusBar = "Refreshing remote data in table " & tbl_Object.Name
  
     Call tbl_Object.QueryTable.Refresh(BackgroundQuery:=False) 
  
@@ -3089,7 +3089,7 @@ Function PivotAutofilter( _
         str_ValuePart = " value" & IIf(UBound(arr_Criteria) > 0, "s: ", ": ") & arr_Criteria(0) & IIf(UBound(arr_Criteria) > 0, " ... ", "") 
     End If 
      
-    Application.Statusbar = Mid("Filtering pivot table: " & pvt_Object.Name & " by field " & str_ColumnName & str_ValuePart, 1, 255) 
+    Application.StatusBar = Mid("Filtering pivot table: " & pvt_Object.Name & " by field " & str_ColumnName & str_ValuePart, 1, 255)
  
     'Clear filters in pivot table 
     If (str_ColumnName = "" Or RemoveAutoFilter = e_ClearCurrentFilters) And Not pvt_Object.PivotCache.OLAP Then 
@@ -3164,7 +3164,7 @@ End Function
 Function PivotAutofilterDate( _ 
     ByRef pvt_Object As PivotTable, _ 
     ByRef str_ColumnName As String, _ 
-    Optional ByRef arr_Criteria, _ 
+    Optional ByRef arr_CriteriaInput As Variant, _
     Optional ByVal InvertedAutoFilter As e_FilterType = e_ShowOnlyCriteriaItems, _ 
     Optional ByVal RemoveAutoFilter As e_ResetFilter = e_LeaveCurrentFilters _ 
     ) 
@@ -3175,12 +3175,13 @@ Function PivotAutofilterDate( _
      
     'check if filter list is not array 
     'If TypeName(arr_Criteria) = "Range" Then arr_Criteria = RangeToArray(arr_Criteria) 
-    Call z_mCovertToSimpleArray(arr_Criteria, True) 
+    Dim arr_Criteria
+    arr_Criteria = z_mCovertToSimpleArray(arr_CriteriaInput, True)
      
     'Criteria Range To Date 
-    For i = LBound(arr_Criteria) To UBound(arr_Criteria) 
-       arr_Criteria(i) = CStr(Month(arr_Criteria(i)) & "/" & Day(arr_Criteria(i)) & "/" & Year(arr_Criteria(i))) 
-    Next 
+'    For i = LBound(arr_Criteria) To UBound(arr_Criteria)
+'       arr_Criteria(i) = CStr(Month(arr_Criteria(i)) & "/" & Day(arr_Criteria(i)) & "/" & Year(arr_Criteria(i)))
+'    Next
  
     With pvt_Object.PivotFields(str_ColumnName) 
      
@@ -4084,7 +4085,7 @@ Function PivotDataAppendToTable( _
                                 Optional ByVal arr_HeaderMask As Variant _ 
                                 ) 
  
-    Application.Statusbar = "Appending PivotDataTable " & pvt_Copy.Name & " to " & tbl_PasteAppend.Name 
+    Application.StatusBar = "Appending PivotDataTable " & pvt_Copy.Name & " to " & tbl_PasteAppend.Name
      
     pvt_Copy.PivotCache.Refresh 
  
@@ -4268,7 +4269,7 @@ Function PivotDataAppendToTable( _
  
 Exit_Function: 
  
-    Application.Statusbar = False 
+    Application.StatusBar = False
     Exit Function 
 Err: 
    
