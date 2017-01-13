@@ -36,56 +36,17 @@ Private used_list_header As clsCollection
 Private lngCurrentMainWindow& 
  
 Private bool_AutoClose As Boolean 
- 
-'Issue Checking Variable 
-'Private black_list As clsCollection 'to check if item is on black list 
-'Public issue_log As clsCollection 'for logging of all issues call by actin InputIssues 
- 
-'Private cc_BlackListedRecordColumns As clsCollection 
-'Private cc_BlackListedRecordItemColumns As clsCollection 
 Private cc_BlackList As clsCollection 
-'Private cc_IssuesCheck As clsCollection 
 Public cc_IssueLog As clsCollection 
  
  
 'NEW DATA ENGINE 
  
 Private cc_RunParameters As clsCollection 'to store parameters same for whole run 
- 
 Private cc_CurrentCursors As clsCollection 
-'Private cc_DataValueOfTables As clsCollection 'to store variant arrays with data 
-'Private cc_DataHeaderOfTables As clsCollection 'to store header indexes for data arrays 
- 
-'Private cc_HeadColumnIndex As clsCollection ' 
-'Private cc_ItemColumnIndex As clsCollection 
- 
-'Private cc_HeadRowIndex As clsCollection 
-'Private cc_ItemRowIndex As clsCollection 
- 
-'Private cc_TableNames As clsCollection 
- 
-'Private cc_TableRowIndexes As clsCollection 
- 
-'Private bool_HeaderLoaded As Boolean 
-'Private bool_FirstItem As Boolean 
- 
 Private str_CurrentKeyColumnName As String 
-'Private str_CurrentKeyColumnValue As String 
- 
-'END NEW DATA ENGINE 
- 
-'Records Variable 
-'Private colRecordDetialsIndexes As clsCollection 
-'Private colItemDetailsIndexes As clsCollection 
-'Private colRecords As clsCollection 'all records collection 
-'Private colRecord As clsCollection 'collection containing all items 
-'Private lngRecordCursor& 
-'Private lngRecordItemCursor& 
  
 Private lng_CurrentPhase& 
- 
-'Private colRecordItems As clsCollection 
- 
 Private lng_added_entry_row& 'row of added entry 
  
 Private str_active_tab$ 'stores value of active tab 
