@@ -2,7 +2,7 @@ Option Explicit
  
 'Wrapper Class for simplifacation access to sap gui created by Jan Becka 09/08/2013 
  
-'Last Update 13|01|17
+'Last Update 15|02|17 
 'dependency on class clsCollection 
 'dependency for loops moved to ATk functions 
  
@@ -36,6 +36,9 @@ Private used_list_header As clsCollection
 Private lngCurrentMainWindow& 
  
 Private bool_AutoClose As Boolean 
+ 
+'Issue Checking Variable 
+
 Private cc_BlackList As clsCollection 
 Public cc_IssueLog As clsCollection 
  
@@ -289,11 +292,20 @@ Private Sub Class_Terminate()
     'Close Session opened by macro 
         If bool_AutoClose = True Then 
             If Not session Is Nothing Then 
+                 
+                Dim obj_Parent As Object 
+                 
+                On Error Resume Next 
+                    Set obj_Parent = session.Parent 
+                On Error GoTo 0 
+             
+                If Not obj_Parent Is Nothing Then 
                 If session.Parent.Children.Count > 1 Then 'close session when its more the one session opened 
                     session.findById("wnd[0]/tbar[0]/okcd").Text = "/i" 
                     Confirm 
                 End If 
             End If 
+        End If 
         End If 
          
     'if there were no loging during macro 
@@ -498,7 +510,7 @@ Err:
        
 End Function 
  
-Public Function SapConnectToInstance(Optional ByRef str_InstanceName$ = "ERP") As Boolean 
+Public Function SapConnectToInstance() As Boolean 
     Dim SapGuiAuto As Object 
     Dim SAP_Applic As Object 
     Dim Connection As Object 
@@ -509,8 +521,6 @@ Public Function SapConnectToInstance(Optional ByRef str_InstanceName$ = "ERP") A
     'set default function exit status as false mean fail 
     SapConnectToInstance = False 
      
-    If Environ("USERNAME") = "beckajan" And str_InstanceName = "ERP" Then str_InstanceName = "ERA eERP R/3 - Acc." 
- 
     'Establish SAP connection 
     On Error Resume Next 
        Set SapGuiAuto = GetObject("SAPGUI") 
@@ -1457,7 +1467,7 @@ End Function
  
 Public Function GoToTransaction(ByRef str_transaction_name$) As Boolean 
 'check for top level 
-    If Not session.findById("wnd[0]").Text Like "*SAP Easy Access" Then 
+    If Not session.findById("wnd[0]").Text Like "*SAP Easy Access*" Then 
         Select Case MsgBox("Close current actions in SAP and run macro?", vbExclamation Or vbOKCancel) 
             Case vbOK: GoToTransaction = True 
                 GoToMainPage 
@@ -1951,7 +1961,7 @@ Public Sub LogToRange(Optional ByRef rng_reference As Range = Nothing)
  
         If rng_reference Is Nothing Then 
             If Not t_RunLog Is Nothing Then 
-                t_RunLog.Range.Offset(1).Resize(UBound(arr_item, 1), UBound(arr_item, 2)) = arr_item 
+                t_RunLog.Range.Offset(1).Resize(UBound(arr_item, 1), UBound(arr_item, 2)).Value = arr_item 
             End If 
         Else 
             rng_reference.Resize(UBound(arr_item, 1) + 1, UBound(arr_item, 2)) = arr_item 
@@ -2899,7 +2909,7 @@ Public Function SapChewVBS(ByVal str_Path As String) As String
     Dim c As String 'Code variable 
      
      
-    c = c & vbCr & "Sub XSUBROUTINENAME(Optional ByRef t_Parameters As ListObject, Optional ByRef t_Input As ListObject, Optional ByRef t_Log As ListObject)" 
+    c = c & vbCr & "Sub XSUBROUTINENAME()" 
     c = c & vbCr & "" 
     c = c & vbCr & "On Error GoTo ERR" 
     c = c & vbCr & "" 
@@ -2913,7 +2923,7 @@ Public Function SapChewVBS(ByVal str_Path As String) As String
     c = c & vbCr & "" 
     c = c & vbCr & vbTab & "Call .ExcelSetRunTables(t_Parameters, t_Log) " 
     c = c & vbCr & "" 
-    c = c & vbCr & vbTab & "If Not .SapConnectToInstance(.Parameter(""System""))  then Exit Sub" 
+    c = c & vbCr & vbTab & "If Not .SapConnectToInstance(.Parameter(""SAP System""))  then Exit Sub" 
     c = c & vbCr & "" 
     c = c & vbCr & vbTab & ".ExcelMinimize" 
     c = c & vbCr & "" 
@@ -3014,10 +3024,10 @@ Public Function SapChewVBS(ByVal str_Path As String) As String
     c = c & vbCr & vbTab & ".ExcelMaximize" 
     c = c & vbCr & "" 
     c = c & vbCr & "Exit Sub" 
-    c = c & vbCr & "ERR:" 
-    c = c & vbCr & vbTab & ".LogAdd , , ERR.Number & "" "" & ERR.Description, issue" 
+    c = c & vbCr & "Err:" 
+    c = c & vbCr & vbTab & ".LogAdd , , Err.Number & "" "" & Err.Description, issue" 
     c = c & vbCr & vbTab & ".LogToRange" 
-    c = c & vbCr & vbTab & "ERR.Raise ERR.Number" 
+    c = c & vbCr & vbTab & "Err.Raise Err.Number" 
     c = c & vbCr & vbTab & "Resume" 
     c = c & vbCr & "End With" 
     c = c & vbCr & "End Sub" 
@@ -3052,27 +3062,49 @@ Public Function DialogExtractCSV( _
         'SAVE AS CSV 
      
         'Open Dialog for Variant 
+  
+    Dim bool_SaveAsDialog As Boolean 
+    bool_SaveAsDialog = False 
+     
+    If SapObjectExist("wnd[" & lngCurrentMainWindow + 1 & "]") Then 'dialog exists 
+        If ItemRead(, "wnd[" & lngCurrentMainWindow + 1 & "]") Like "*Save list in file*" Then  'not save dialog 
+            bool_SaveAsDialog = True 
+        End If 
+    End If 
+         
+    If Not bool_SaveAsDialog Then 
+     
+        'not save as dialog 
         If TypeName(var_TriggerAction) = "String" Then 
-            ItemPress CStr(var_TriggerAction) 
+            ItemPress CStr(var_TriggerAction) 'button address 
         Else 
-            PressKey CLng(var_TriggerAction) 
+             PressKey CLng(var_TriggerAction) 'key press action 
         End If 
          
+     
+    End If 
+ 
      
         ItemSelect "wnd[1]/usr/subSUBSCREEN_STEPLOOP:SAPLSPO5:0150/sub:SAPLSPO5:0150/radSPOPLI-SELFLAG[0,0]" 
         ItemPress "wnd[1]/tbar[0]/btn[0]" 
      
         If str_ExtractPath = "\" Then str_ExtractPath = ThisWorkbook.Path & "\" 
+    If Not str_ExtractPath Like "*\" Then str_ExtractPath = str_ExtractPath & "\" 
      
         On Error Resume Next 
         Kill (str_ExtractPath & str_ExtractName) 
-        On Error GoTo Err 
+    On Error GoTo 0 
+ 
+    ItemEnter saptext, str_ExtractPath, "wnd[1]/usr/ctxtDY_PATH" 
+    ItemEnter saptext, str_ExtractName, "wnd[1]/usr/ctxtDY_FILENAME" 
+    ItemEnter saptext, "0000", "wnd[1]/usr/ctxtDY_FILE_ENCODING" 
      
-        .ItemEnter saptext, str_ExtractPath, "wnd[1]/usr/ctxtDY_PATH" 
-        .ItemEnter saptext, str_ExtractName, "wnd[1]/usr/ctxtDY_FILENAME" 
-        .PressKey CtrlS_11 
+    PressKey Enter_0, 1 'Generate 
+    'PressKey CtrlS_11 
+     
+    ConfirmPopUps 
          
-        .SapCsvCleanFix str_ExtractPath & str_ExtractName 
+    SapCsvCleanFix str_ExtractPath & str_ExtractName 
  
  
 End Function 
@@ -3086,17 +3118,27 @@ Public Function DialogExtractXXL( _
     If str_ExtractPath = "" Then str_ExtractPath = ThisWorkbook.Path 
  
     'Open Dialog for Variant 
-    If TypeName(var_TriggerAction) = "String" Then 
-         
-        If CStr(var_TriggerAction) Like "*menu*" Then 
-            ItemSelect CStr(var_TriggerAction) 
-        Else 
-            ItemPress CStr(var_TriggerAction) 
+Dim bool_SaveAsDialog As Boolean 
+    bool_SaveAsDialog = False 
+     
+    If SapObjectExist("wnd[" & lngCurrentMainWindow + 1 & "]") Then 'dialog exists 
+        If ItemRead(, "wnd[" & lngCurrentMainWindow + 1 & "]") Like "*Select Spreadsheet*" Then  'not save dialog 
+            bool_SaveAsDialog = True 
         End If 
-         
-    Else 
-        PressKey CLng(var_TriggerAction) 
     End If 
+         
+    If Not bool_SaveAsDialog Then 
+     
+        'not save as dialog 
+    If TypeName(var_TriggerAction) = "String" Then 
+            ItemPress CStr(var_TriggerAction) 'button address 
+        Else 
+             PressKey CLng(var_TriggerAction) 'key press action 
+        End If 
+     
+         
+    End If 
+ 
  
     ItemSelect "wnd[1]/usr/radRB_OTHERS" 
      
@@ -3115,7 +3157,7 @@ Public Function DialogExtractXXL( _
      
     Call z_GetWorkbook(wbk_workbook, "Worksheet in Basis (1)") 
      
-    Call wbk_workbook.SaveAs(str_ExtractPath & "\" & str_ExtractName) 
+    Call wbk_workbook.SaveAs(str_ExtractPath & "\" & str_ExtractName, 50) '50 excel binary format .xlsb 
      
     Call wbk_workbook.Close(False) 
      

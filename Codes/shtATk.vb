@@ -97,8 +97,15 @@ Private lng_ApplicationCalculations  As Long
 Private lng_ApplicationAlerts As Long 
  
 Private Const adr_Calculations As String = "C1" 
+Private Const adr_RunLevel As String = "C2" 
  
-Private bool_AlreadyStarted As Boolean 
+Private Const adr_LocalGitPath As String = "C5" 
+Private Const adr_IssueEmail As String = "C6" 
+ 
+ 
+Private lng_RunLevel As Long 
+ 
+'Private bool_AlreadyStarted As Boolean 
  
 Private Declare Function SetCurrentDirectoryA Lib "kernel32" (ByVal lpPathName As String) As Long 
   
@@ -222,11 +229,26 @@ Function MacroStart( _
                     Optional bool_DisplayAlerts As Boolean = False _ 
                     ) 
                      
+                     
 'Try to load Variables to Memory 
  
+    'check if succesfully finished 
+    If Me.Range(adr_RunLevel) <> lng_RunLevel Then 
+        Application.Calculation = Me.Range(adr_Calculations) 
+        lng_RunLevel = 0 'reset calculation 
+        Me.Range(adr_RunLevel) = lng_RunLevel 
+    End If 
+     
+    'Icrease Run Counter 
+    lng_RunLevel = lng_RunLevel + 1 
+    Me.Range(adr_RunLevel) = lng_RunLevel 
+ 
+    'if already started skip init procedure 
+    If lng_RunLevel > 1 Then Exit Function 
+       
     Call Application.Run("'" & ThisWorkbook.Name & "'!LinkWorkbookTables") 
  
-    'RESET ERROR 
+    'RESET ErrOR 
     If Err.Number <> 0 Then Err.Number = 0 
  
     With Application 
@@ -787,6 +809,17 @@ Public Function DocumentTableLoad(ByVal obj_Table As Object, ByVal t_Table As Li
 End Function 
 Function MacroFinish() 
  
+    If lng_RunLevel <> Me.Range(adr_RunLevel) Then 'not same then error reset 
+        'Error Recover 
+        lng_RunLevel = 1 
+        Me.Range(adr_RunLevel) = lng_RunLevel 
+    End If 
+ 
+    lng_RunLevel = lng_RunLevel - 1 
+    Me.Range(adr_RunLevel) = lng_RunLevel 
+ 
+    If lng_RunLevel > 0 Then Exit Function 
+ 
 'Check if in words is no anything open if yes show word 
     If Not app_Word Is Nothing Then 
         If app_Word.Documents.Count = 0 Then 
@@ -805,16 +838,14 @@ Function MacroFinish()
  
 'Loading original data to Excel 
     With Application 
-        .Calculation = lng_ApplicationCalculations 
+        .Calculation = Me.Range(adr_Calculations) 
         .ScreenUpdating = lng_ApplicationScreen 
         .EnableEvents = lng_ApplicationEvents 
         .DisplayAlerts = lng_ApplicationAlerts 
-        .StatusBar = False
+        .Statusbar = False 
     End With 
      
 'Clear Loop Containers to freeup memory 
-   ' Set cc_LoopedRanges = Nothing 
-   ' Set cc_LoopedRangesIndexes = Nothing 
     Set cc_TableLoopHeaders = Nothing 
     Set cc_TableLoopCursors = Nothing 
     Set cc_WorkbookPaths = Nothing 
@@ -2684,7 +2715,43 @@ Private Function z_mWorkbookAlreadyOpen(ByRef wbk_Source As Workbook, Optional B
  
 End Function 
  
+Private Function z_FillUnamedParameters() 
  
+    Dim rng_Cursor As Range 
+ 
+     
+    For Each rng_Cursor In ThisWorkbook.Sheets("Main").ListObjects("t_Parameters").DataBodyRange.Resize(, 1).Offset(, 1) 
+         
+        Dim str_Name As String 
+         
+        str_Name = "" 
+         
+        'get name from the names library 
+        On Error Resume Next 
+           str_Name = ThisWorkbook.Names(, , CStr(rng_Cursor.Offset(, 1).Name)).Name 
+        On Error GoTo 0 
+         
+        If str_Name = "" Then 
+            rng_Cursor.Offset(, 1).Name = "rng_" & Replace(WorksheetFunction.Proper(rng_Cursor.Value), " ", "") 
+        End If 
+ 
+    Next 
+ 
+End Function 
+ 
+Private Function z_CleanRefErrNames() 
+     
+    Dim name_Cur As Name 
+     
+    For Each name_Cur In ThisWorkbook.Names 
+     
+        If Right(CStr(name_Cur.RefersTo), 5) = "#REF!" Then 
+            name_Cur.Delete 
+        End If 
+     
+    Next 
+ 
+End Function 
  
 Private Function z_mFilePathChecker( _ 
     ByRef str_FilePathOutput As String, _ 
@@ -3074,6 +3141,23 @@ Function PivotRefresh( _
     pvt_Object.PivotCache.Refresh 
      
 End Function 
+ 
+Function PivotCleanCache( _ 
+    ByRef pvt_Object As PivotTable _ 
+        ) 
+ 
+    Dim lng_MissingFlag As Long 
+ 
+    lng_MissingFlag = pvt_Object.PivotCache.MissingItemsLimit 
+ 
+    pvt_Object.PivotCache.MissingItemsLimit = xlMissingItemsNone 
+    pvt_Object.PivotCache.Refresh 
+    pvt_Object.PivotCache.MissingItemsLimit = lng_MissingFlag 
+ 
+ 
+End Function 
+ 
+ 
  
 Function PivotAutofilter( _ 
     ByRef pvt_Object As PivotTable, _ 
@@ -4288,6 +4372,10 @@ End Function
  
 Public Function xLinkExcelObjects() 
  
+'Parameters Cleanup 
+    Call z_CleanRefErrNames 
+    Call z_FillUnamedParameters 
+ 
     Dim CodePan As Object 
      
     Call zSelectCodePan(CodePan, "mod_AtkBindings") 
@@ -4486,6 +4574,8 @@ Public Function xLinkExcelObjects()
          
          
 'CLEAR & PRINT NEW 
+    Set CodePan = Nothing 
+ 
     Call zCodeRemove("mod_AtkBindings") 
     Call zCodeAppend(str_CodePart, "mod_ATkBindings") 
      
@@ -4726,7 +4816,7 @@ Function xAddButton(ByVal str_ButtonCaption As String, Optional ByVal bool_Chewi
             vbTab & "With shtATk", _ 
             vbTab & vbTab & ".MacroStart", _ 
              "", _ 
-            vbTab & vbTab & "Call mod_Chewie." & str_ActionName & "(t_Parameters, t_Input, t_Log)", _ 
+            vbTab & vbTab & "Call mod_Chewie." & str_ActionName, _ 
             vbTab & vbTab & "' your script goes here", _ 
              "", _ 
             vbTab & vbTab & ".MacroFinish", _ 
@@ -4857,25 +4947,17 @@ On Error GoTo Err
         Exit Function 
     End If 
      
-    Dim rng_Cursor As Range 
+    'Old Range I11:I30 
     Dim rng_Link As Range 
      
-    For Each rng_Cursor In ThisWorkbook.Sheets("Main").Range("I11:I30") 
-        On Error Resume Next 
-        Dim str_Name As String 
-        str_Name = "" 
-        str_Name = rng_Cursor.Name 
-        On Error GoTo 0 
-        If str_Name = "" And rng_Cursor.Offset(, -1) = "" And rng_Cursor.Offset(, -2) = "" And rng_Cursor = "" Then 
-            Set rng_Link = rng_Cursor 
-            Exit For 
-        End If 
-    Next 
+    With ThisWorkbook.Sheets("Main").ListObjects("t_Parameters") 
+        Set rng_Link = .HeaderRowRange.Offset(.Range.Rows.Count, 1).Resize(, 1) 
+    End With 
      
-    'add named range 
-    rng_Link.Name = "rng_" & str_PickerCodeName 
+    rng_Link.Offset(, 1).Name = "rng_" & str_PickerCodeName 
+    rng_Link.Value = str_PickerName 
      
-    'Clean up 
+    'Clean up Existing Dummy 
     On Error Resume Next 
         ThisWorkbook.Sheets("Main").Shapes("btn_PickerTemplate").Delete 
     On Error GoTo Err 
@@ -4887,27 +4969,16 @@ On Error GoTo Err
     Dim new_Button As Shape 
     Set new_Button = ThisWorkbook.Sheets("Main").Shapes("btn_PickerTemplate") 
  
-    new_Button.Top = lng_ControlsTop 
-    new_Button.Name = str_ButtonName 
-    new_Button.Left = rng_Link.Left - lng_Width 
+    'size, location of button 
+    new_Button.Width = rng_Link.Offset(, -1).Width 
+    new_Button.Height = rng_Link.Offset(, -1).Height 
     new_Button.Top = rng_Link.Top 
+    new_Button.Left = rng_Link.Offset(, -1).Left 
+    
+     
     new_Button.Fill.ForeColor.ObjectThemeColor = msoThemeColorAccent1 
+    new_Button.Name = str_ButtonName 
     new_Button.OnAction = str_ButtonName 
- 
-    With rng_Link.Offset(, -1) 
-        .HorizontalAlignment = xlRight 
-        .VerticalAlignment = xlBottom 
-        .WrapText = False 
-        .Orientation = 0 
-        .AddIndent = False 
-        .IndentLevel = 0 
-        .ShrinkToFit = False 
-        .ReadingOrder = xlContext 
-        .MergeCells = False 
-        .Value = str_PickerName 
-        .InsertIndent 4 
-        .Font.Bold = True 
-    End With 
  
      'ENTER CODE 
     'Call zSelectCodePan(CodePan, "mod_AtkMain") 
@@ -4915,9 +4986,9 @@ On Error GoTo Err
     Dim str_ActionName As String 
  
     Select Case lng_PickerType 
-        Case e_FilePicker: str_ActionName = "FilePicker" 
-        Case e_FolderPicker: str_ActionName = "FolderPicker" 
-        Case e_OutlookPicker: str_ActionName = "FolderPickerOutlook" 
+        Case e_FilePicker: str_ActionName = "PickerFile" 
+        Case e_FolderPicker: str_ActionName = "PickerFolder" 
+        Case e_OutlookPicker: str_ActionName = "PickerOutlook" 
     End Select 
  
     Dim str_NewProcedure As String 
@@ -4930,7 +5001,6 @@ On Error GoTo Err
          "", _ 
         vbTab & vbTab & "Call ." & str_ActionName & "(rng_" & str_PickerCodeName & ", ""Please select " & str_PickerName & """)", _ 
          "", _ 
-        "MACRO_FINISH:", _ 
         vbTab & vbTab & ".MacroFinish", _ 
         vbTab & "End With", _ 
         "", _ 
@@ -5034,30 +5104,15 @@ On Error GoTo Err
     Dim lng_ControlsTop As Long 
      
     'find Lowest Button on main sheet 
-    Dim rng_Cursor As Range 
     Dim rng_Link As Range 
      
-    For Each rng_Cursor In ThisWorkbook.Sheets("Main").Range("I11:I30") 
-        On Error Resume Next 
-        Dim str_Name As String 
-        str_Name = "" 
-        str_Name = rng_Cursor.Name 
-        On Error GoTo 0 
-        If str_Name = "" And rng_Cursor.Offset(, -1) = "" And rng_Cursor.Offset(, -2) = "" And rng_Cursor = "" Then 
-            Set rng_Link = rng_Cursor 
-            Exit For 
-        End If 
-    Next 
+    With ThisWorkbook.Sheets("Main").ListObjects("t_Parameters") 
+        Set rng_Link = .HeaderRowRange.Offset(.Range.Rows.Count, 1).Resize(, 1) 
+    End With 
      
     'add named range 
-    rng_Link.Name = "rng_" & Replace(WorksheetFunction.Proper(Trim(str_ParameterName)), " ", "") 
-     
-    With rng_Link.Offset(, -1) 
-        .Value = str_ParameterName & " :" 
-        .HorizontalAlignment = xlRight 
-        .AddIndent = False 
-        .IndentLevel = 0 
-    End With 
+    rng_Link.Offset(, -1).Name = "rng_" & Replace(WorksheetFunction.Proper(Trim(str_ParameterName)), " ", "") 
+    rng_Link.Value = str_ParameterName 
  
     DoEvents 
     Call xLinkExcelObjects 
@@ -5148,8 +5203,6 @@ Function TableAddRowByMap( _
  
 End Function 
  
- 
- 
 Public Sub zATK_Issue() 
  
     MacroStart 
@@ -5160,7 +5213,7 @@ Public Sub zATK_Issue()
                         "<a href=""" & ThisWorkbook.Path & """>BAU</a>", _ 
                         "<a href=""" & rng_ManualLink.Text & """>MAN</a>"), _ 
                         ThisWorkbook.Name, _ 
-                        "jan.becka@ab-inbev.com") 
+                        Me.Range(adr_IssueEmail).Value2) 
      
      
     Call EmailAttachWorkbook(obj_Email, ThisWorkbook) 
@@ -5182,14 +5235,13 @@ End Sub
  
  
 Sub zCodeRemove(ByVal str_ModuleName As String, Optional ByRef wbk_Target As Workbook = Nothing) 
- 
    
     Dim codemod As Object 
    
     Call shtATk.zSelectCodePan(codemod, str_ModuleName, wbk_Target) 
      
     With codemod 
-        .DeleteLines 1, .CountOfLines 
+        Call .DeleteLines(1, .CountOfLines) 
     End With 
  
 End Sub 
@@ -5207,10 +5259,10 @@ Function zCodeExport(ByVal str_ModuleName) As Boolean
         'write file 
          
         On Error Resume Next 
-        MkDir ThisWorkbook.Path & "\Codes\" 
+        MkDir shtATk.Range(adr_LocalGitPath) & "\Codes\" 
         On Error GoTo 0 
          
-        With .CreateTextFile(ThisWorkbook.Path & "\Codes\" & str_ModuleName & ".vb", True) 
+        With .CreateTextFile(shtATk.Range(adr_LocalGitPath) & "\Codes\" & str_ModuleName & ".vb", True) 
        
             Call .WriteLine(Join(arr_Code)) 
             Call .Close 
