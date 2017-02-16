@@ -5316,10 +5316,12 @@ Function zCodeLocalGitUpdate() As Boolean
         str_OriginalName = ThisWorkbook.Name 
      
         'save original for update 
+        Application.DisplayAlerts = False 
         Call ThisWorkbook.Save 
          
         'save backup 
-        Call ThisWorkbook.SaveAs(Replace(str_OriginalName, ".xls", "_bckp" & Format(Now, "ddmmyy-hhnnss") & ".xls")) 
+        Call ThisWorkbook.SaveAs(ThisWorkbook.Path & "\" & Replace(str_OriginalName, ".xls", "_bckp" & Format(Now, "ddmmyy-hhnnss") & ".xls")) 
+        Application.DisplayAlerts = True 
          
         'Open New Version 
         Dim wbk_NewUpdated As Workbook 
@@ -5329,8 +5331,9 @@ Function zCodeLocalGitUpdate() As Boolean
         Call zCodeImport("shtATk", wbk_NewUpdated) 
         Call zCodeImport("clsSap", wbk_NewUpdated) 
          
-        'With shtATk 
-        'End With 
+        'Close backup and activate updated 
+        wbk_NewUpdated.Activate 
+        ThisWorkbook.Close 
  
 End Function 
   
