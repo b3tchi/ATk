@@ -5333,9 +5333,13 @@ Function zCodeLocalGitUpdate() As Boolean
          
         'Close backup and activate updated 
         wbk_NewUpdated.Activate 
-        ThisWorkbook.Close 
+        Application.DisplayAlerts = True 
+  
+        Call ThisWorkbook.Close(False) 
  
 End Function 
+   
+  
   
  
  
