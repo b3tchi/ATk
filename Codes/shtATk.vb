@@ -886,7 +886,11 @@ Function TableClear(ByVal tbl_Object As ListObject)
     If tbl_Object.Range.Columns.Count = 1 Then 'avoid whole table removal 
          tbl_Object.HeaderRowRange.Offset(1).ClearContents 'clear just data 
     Else 
+        If z_ContainsCellType(tbl_Object.HeaderRowRange.Offset(1), xlCellTypeConstants) Then 
          tbl_Object.HeaderRowRange.Offset(1).SpecialCells(xlCellTypeConstants).ClearContents 'clear just data 
+        Else 
+            Exit Function 
+    End If 
     End If 
      
     tbl_Object.Range.Calculate 
@@ -898,9 +902,9 @@ Err:
  
     Select Case Err.Number 
         Case 0 
-        Case 1004: If Err.Description = "No cells were found." Then Exit Function 
+        Case 1004 
     End Select 
- 
+'Resume 
 End Function 
  
 Function TableClearAll(ByVal tbl_Object As ListObject) 
@@ -1533,18 +1537,18 @@ Function TablePasteAppend( _
      
      
 'FUNCTION ACTION 
-    With tbl_Object.Range.Offset(1).Resize(tbl_Object.Range.Rows.Count - 1) 
+    With tbl_Object.Range 
       
-        If .Rows.Count = 1 Then 
+        If .Rows.Count = 2 Then 
              
-            If .SpecialCells(xlCellTypeConstants).Rows.Count = 0 Then 
-                lng_CopyRowsCount = 0 
-            Else 
+            If z_ContainsCellType(tbl_Object.HeaderRowRange.Offset(1), xlCellTypeConstants) Then ' .SpecialCells(xlCellTypeConstants).Rows.Count = 0 Then 
                 lng_CopyRowsCount = 1 
+            Else 
+                lng_CopyRowsCount = 0 
             End If 
          
         Else 
-            lng_CopyRowsCount = .Rows.Count 
+            lng_CopyRowsCount = .Rows.Count - 1 
         End If 
  
     End With 
@@ -1574,7 +1578,7 @@ Err:
  
     Debug.Print Err.Number 
     Select Case Err.Number 
-        Case 1004: If Err.Description = "No cells were found." Then Resume Next 
+        Case 1004 
         Case 0 
     End Select 
  
@@ -1732,26 +1736,23 @@ Function TableAppendToTable( _
  
  
     Dim lng_PasteOffset As Long 
-    Dim lng_PasteResize As Long 
+    Dim lng_PasteResizeCorrection As Long 
  
     If tbl_PasteAppend.Range.Rows.Count = 2 Then 
  
-        If tbl_PasteAppend.HeaderRowRange.Offset(1).SpecialCells(xlCellTypeConstants).Count = 0 Then 
-            lng_PasteResize = 1 
+        If z_ContainsCellType(tbl_PasteAppend.HeaderRowRange.Offset(1), xlCellTypeConstants) Then 
+            lng_PasteResizeCorrection = 0 
         Else 
-            lng_PasteResize = 0 
+            lng_PasteResizeCorrection = 1 
         End If 
     End If 
  
-    'End With 
-     
-     
     Dim rng_AppendArea As Range 
      
-    Set rng_AppendArea = tbl_PasteAppend.Range.Offset(tbl_PasteAppend.Range.Rows.Count - lng_PasteResize).Resize(UBound(arr_Append)) 
+    Set rng_AppendArea = tbl_PasteAppend.Range.Offset(tbl_PasteAppend.Range.Rows.Count - lng_PasteResizeCorrection).Resize(UBound(arr_Append)) 
      
     'RESIZE PASTE TABLE 
-    Call tbl_PasteAppend.Resize(tbl_PasteAppend.Range.Resize((UBound(arr_Paste) - lng_PasteResize) + (UBound(arr_VisibleRows) + 1))) 
+    Call tbl_PasteAppend.Resize(tbl_PasteAppend.Range.Resize((UBound(arr_Paste) - lng_PasteResizeCorrection) + (UBound(arr_VisibleRows) + 1))) 
      
      
     rng_AppendArea = arr_Append 
@@ -1777,11 +1778,31 @@ Err:
    
     Debug.Print Err.Number & Err.Description 
     Select Case Err.Number 
-        Case 1004: If Err.Description = "No cells were found." Then Resume Next 
+        Case 1004 
         Case 0 
     End Select 
   'Resume 
 End Function 
+ 
+Private Function z_ContainsCellType(ByVal rng_Target As Range, lng_CellType As XlCellType) As Boolean 
+ 
+    z_ContainsCellType = False 
+ 
+    On Error GoTo Err 
+ 
+    z_ContainsCellType = rng_Target.SpecialCells(lng_CellType).Count > 0 
+     
+Exit Function 
+ 
+Err: 
+    Debug.Print "z_ContainsCellType: "; Err.Number & " " & Err.Description 
+    Select Case Err.Number 
+        Case 1004:  Resume Next 
+        Case 0 
+    End Select 
+     
+End Function 
+ 
  
 Function TableSort( _ 
                     ByVal tbl_Object As ListObject, _ 
@@ -4317,26 +4338,23 @@ Function PivotDataAppendToTable( _
  
  
     Dim lng_PasteOffset As Long 
-    Dim lng_PasteResize As Long 
+    Dim lng_PasteResizeCorrection As Long 
  
     If tbl_PasteAppend.Range.Rows.Count = 2 Then 
  
-        If tbl_PasteAppend.HeaderRowRange.Offset(1).SpecialCells(xlCellTypeConstants).Count = 0 Then 
-            lng_PasteResize = 1 
+        If z_ContainsCellType(tbl_PasteAppend.HeaderRowRange.Offset(1), xlCellTypeConstants) Then 
+            lng_PasteResizeCorrection = 0 
         Else 
-            lng_PasteResize = 0 
+            lng_PasteResizeCorrection = 1 
         End If 
     End If 
  
-    'End With 
-     
-     
     Dim rng_AppendArea As Range 
      
-    Set rng_AppendArea = tbl_PasteAppend.Range.Offset(tbl_PasteAppend.Range.Rows.Count - lng_PasteResize).Resize(UBound(arr_Append)) 
+    Set rng_AppendArea = tbl_PasteAppend.Range.Offset(tbl_PasteAppend.Range.Rows.Count - lng_PasteResizeCorrection).Resize(UBound(arr_Append)) 
      
 'RESIZE PASTE TABLE 
-    Call tbl_PasteAppend.Resize(tbl_PasteAppend.Range.Resize((UBound(arr_Paste) - lng_PasteResize) + (UBound(arr_VisibleRows) + 1))) 
+    Call tbl_PasteAppend.Resize(tbl_PasteAppend.Range.Resize((UBound(arr_Paste) - lng_PasteResizeCorrection) + (UBound(arr_VisibleRows) + 1))) 
      
      
     rng_AppendArea = arr_Append 
@@ -4363,7 +4381,7 @@ Err:
    
     Debug.Print Err.Number & Err.Description 
     Select Case Err.Number 
-        Case 1004: If Err.Description = "No cells were found." Then Resume Next 
+        Case 1004 ' 
         Case 0 
     End Select 
   'Resume 

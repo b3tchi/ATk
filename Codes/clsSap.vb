@@ -259,7 +259,7 @@ Public Function z_GetExcelObjectFromHwnd(ByVal hWnd As Long, ByRef wbk_Ref As Wo
         Dim wbk_Cursor As Workbook 
          
         For Each wbk_Cursor In objApp.Workbooks 
-            If wbk_Cursor.Name = str_WorkbookName Then 
+            If wbk_Cursor.Name Like str_WorkbookName Then 
                 Set wbk_Ref = wbk_Cursor 
                 Exit For 
             End If 
@@ -3155,7 +3155,7 @@ Dim bool_SaveAsDialog As Boolean
      
     Dim wbk_workbook As Workbook 
      
-    Call z_GetWorkbook(wbk_workbook, "Worksheet in Basis (1)") 
+    Call z_GetWorkbook(wbk_workbook, "* Basis (1)") 
      
     Call wbk_workbook.SaveAs(str_ExtractPath & "\" & str_ExtractName, 50) '50 excel binary format .xlsb 
      
