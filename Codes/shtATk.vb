@@ -66,6 +66,11 @@ Public Enum e_TableLoopTypes
     e_NonBlanks '//change to Visible 
 End Enum 
  
+Public Enum e_DirectionCopy 
+    e_InsideTable 
+    e_OutsideTable 
+End Enum 
+  
 'Linked Applications 
 Dim app_Word As Object 'Word.Application 
 Dim app_Outlook As Object 
@@ -102,10 +107,10 @@ Private Const adr_RunLevel As String = "C2"
 Private Const adr_LocalGitPath As String = "C5" 
 Private Const adr_IssueEmail As String = "C6" 
  
+Private fso_Object As Object 
  
 Private lng_RunLevel As Long 
  
-'Private bool_AlreadyStarted As Boolean 
  
 Private Declare Function SetCurrentDirectoryA Lib "kernel32" (ByVal lpPathName As String) As Long 
   
@@ -836,6 +841,11 @@ Function MacroFinish()
         app_Outlook.Quit 
     End If 
  
+'Check if FilesSystem is not running 
+    If Not fso_Object Is Nothing Then 
+        Set fso_Object = Nothing 
+    End If 
+  
 'Loading original data to Excel 
     With Application 
         .Calculation = Me.Range(adr_Calculations) 
@@ -983,12 +993,12 @@ Private Function z_mCovertToSimpleArray( _
                 GoTo Exit_Function: 
             Else 
              
-                arr_TempCriteria = arr_Criteria.Value 
-             
                 If arr_Criteria.Count > 1 Then 
+                    arr_TempCriteria = arr_Criteria.Value 
                     arr_TempCriteria = z_mCovertToSimpleArray(arr_TempCriteria) 
                 Else 
-                    arr_TempCriteria = Array(arr_TempCriteria) 
+                    arr_Criteria.Calculate 
+                    arr_TempCriteria = Array(arr_Criteria.Value) 
                 End If 
      
             End If 
@@ -2752,7 +2762,7 @@ Private Function z_FillUnamedParameters()
            str_Name = ThisWorkbook.Names(, , CStr(rng_Cursor.Offset(, 1).Name)).Name 
         On Error GoTo 0 
          
-        If str_Name = "" Then 
+        If str_Name = "" And rng_Cursor <> "" Then 
             rng_Cursor.Offset(, 1).Name = "rng_" & Replace(WorksheetFunction.Proper(rng_Cursor.Value), " ", "") 
         End If 
  
@@ -3092,11 +3102,11 @@ End Function
 'optional   r   bool_SaveBeforeQuit     boolean     : predefined boolean to check if workbook should be automatically closed 
  
 Function WorkbookClose( _ 
-    Optional ByRef wbk_Source As Workbook, _ 
+    Optional ByRef wbk_Source As Variant, _ 
     Optional BeforeClose As e_ClosingAction = e_ClosingAction.e_DontSave _ 
     ) 
      
-    If wbk_Source Is Nothing Then 
+    If IsMissing(wbk_Source) Then 
         Set wbk_Source = ThisWorkbook 
     End If 
      
@@ -3968,7 +3978,7 @@ Function EmailSaveAttachment( _
      
         Dim str_AttFilename As String 
      
-        str_AttFilename = objAtt.FileName 
+        str_AttFilename = objAtt.Filename 
         str_OriginalName = objAtt.DisplayName 
      
         If Not IsMissing(str_AttachmentFileMask) Then 
@@ -5143,20 +5153,137 @@ Resume
  
 End Function 
  
-Function TableAddRowByMap( _ 
-    ByRef tbl_SourceTable As ListObject, _ 
+Function FileExist(ByVal var_FilePath As Variant) As Boolean 
+     
+    Dim str_Path As String 
+ 
+    str_Path = CStr(z_mCovertToSimpleArray(var_FilePath)(0)) 
+ 
+    Call z_mFsoOpen 
+     
+    FileExist = fso_Object.FileExists(str_Path) 
+ 
+End Function 
+  
+Function z_mFsoOpen() As Boolean 
+ 
+    If fso_Object Is Nothing Then 
+       Set fso_Object = CreateObject("Scripting.FileSystemObject") 
+    End If 
+ 
+End Function 
+  
+  
+'Function TableRowAddByMap( _ 
+'    ByRef tbl_SourceTable As ListObject, _ 
+'    ByRef tbl_MapTable As ListObject, _ 
+'    Optional ByRef wbk_Source As Workbook) As Boolean 
+' 
+'    Dim arr_HeaderColumns 
+'    Dim arr_Map() 
+' 
+'    Dim wbk_Temp As Workbook 
+' 
+'    If wbk_Source Is Nothing Then 
+'        Set wbk_Temp = ThisWorkbook 
+'    Else 
+'        Set wbk_Temp = wbk_Source 
+'    End If 
+' 
+'    arr_HeaderColumns = WorksheetFunction.Index(tbl_SourceTable.HeaderRowRange, 1, 0) 
+' 
+'    Dim lng_Cursor As Long 
+' 
+'    arr_Map = tbl_MapTable.Range 
+' 
+'    Dim lng_TableNewLine As Long 
+' 
+'    Dim lng_SheetIndex As Long 
+'    Dim lng_RangeRef As Long 
+'    Dim lng_TargetColumn As Long 
+' 
+'    Dim lng_TableFirstColumn As Long 
+' 
+'    lng_TableFirstColumn = tbl_MapTable.HeaderRowRange.Resize(1, 1).Column - 1 
+' 
+'    With tbl_MapTable.HeaderRowRange 
+' 
+'        lng_SheetIndex = .Find("Sheet").Column - lng_TableFirstColumn 
+'        lng_RangeRef = .Find("Range").Column - lng_TableFirstColumn 
+'        lng_TargetColumn = .Find("ColumnName").Column - lng_TableFirstColumn 
+' 
+'    End With 
+' 
+' 
+'    Dim lng_OffsetRow As Long 
+' 
+' 
+'    lng_OffsetRow = tbl_SourceTable.Range.Rows.Count 
+' 
+'    If lng_OffsetRow = 2 Then 
+' 
+'        Dim rng_FirstRow As Range 
+'        On Error Resume Next 
+'        Set rng_FirstRow = tbl_SourceTable.HeaderRowRange.Offset(1).SpecialCells(xlCellTypeConstants) 
+'        On Error GoTo 0 
+' 
+'        If rng_FirstRow Is Nothing Then 
+'            lng_OffsetRow = 1 
+'        End If 
+' 
+'    End If 
+' 
+' 
+'    With tbl_SourceTable.HeaderRowRange.Offset(lng_OffsetRow) 
+' 
+' 
+'        For lng_Cursor = LBound(arr_Map) + 1 To UBound(arr_Map) 
+' 
+'            On Error Resume Next 
+'             .Cells(1, Application.Match(arr_Map(lng_Cursor, lng_TargetColumn), arr_HeaderColumns, 0)) = wbk_Temp.Sheets(arr_Map(lng_Cursor, lng_SheetIndex)).Range(arr_Map(lng_Cursor, lng_RangeRef)).Value 
+' 
+'                Debug.Print Err.Number 
+'            On Error GoTo 0 
+' 
+'        Next 
+' 
+'    .Calculate 
+' 
+'    End With 
+' 
+' 
+'End Function 
+  
+Function TableRecordByMap( _ 
+    ByRef var_SourceInput As Variant, _ 
     ByRef tbl_MapTable As ListObject, _ 
-    Optional ByRef wbk_Source As Workbook) As Boolean 
+    Optional ByRef wbk_Source As Variant, _ 
+    Optional ByRef lng_Direction As e_DirectionCopy = e_InsideTable) As Boolean 
      
     Dim arr_HeaderColumns 
     Dim arr_Map() 
      
+    'Define workbook 
     Dim wbk_Temp As Workbook 
      
-    If wbk_Source Is Nothing Then 
+    If IsMissing(wbk_Source) Then 
         Set wbk_Temp = ThisWorkbook 
     Else 
         Set wbk_Temp = wbk_Source 
+    End If 
+      
+    'Define Table 
+    Dim tbl_SourceTable As ListObject 
+    Dim bool_UpdateData As Boolean 
+      
+    If TypeName(var_SourceInput) = "Range" Then 
+        Set tbl_SourceTable = var_SourceInput.ListObject 
+        bool_UpdateData = True 
+    End If 
+     
+    If TypeName(var_SourceInput) = "ListObject" Then 
+        Set tbl_SourceTable = var_SourceInput 
+        bool_UpdateData = False 
     End If 
      
     arr_HeaderColumns = WorksheetFunction.Index(tbl_SourceTable.HeaderRowRange, 1, 0) 
@@ -5185,7 +5312,13 @@ Function TableAddRowByMap( _
      
      
     Dim lng_OffsetRow As Long 
+      
+      
+    If bool_UpdateData Then 
      
+        lng_OffsetRow = var_SourceInput.Row - tbl_SourceTable.HeaderRowRange.Row 
+     
+    Else 
      
     lng_OffsetRow = tbl_SourceTable.Range.Rows.Count 
      
@@ -5198,18 +5331,29 @@ Function TableAddRowByMap( _
          
         If rng_FirstRow Is Nothing Then 
             lng_OffsetRow = 1 
+            End If 
+          
         End If 
      
     End If 
      
+    'recalculate table 
+    tbl_MapTable.Range.Calculate 
      
+    'Data Execution 
     With tbl_SourceTable.HeaderRowRange.Offset(lng_OffsetRow) 
  
  
         For lng_Cursor = LBound(arr_Map) + 1 To UBound(arr_Map) 
              
             On Error Resume Next 
+             
+            If lng_Direction = e_InsideTable Then 
              .Cells(1, Application.Match(arr_Map(lng_Cursor, lng_TargetColumn), arr_HeaderColumns, 0)) = wbk_Temp.Sheets(arr_Map(lng_Cursor, lng_SheetIndex)).Range(arr_Map(lng_Cursor, lng_RangeRef)).Value 
+            Else 
+                wbk_Temp.Sheets(arr_Map(lng_Cursor, lng_SheetIndex)).Range(arr_Map(lng_Cursor, lng_RangeRef)).Value = .Cells(1, Application.Match(arr_Map(lng_Cursor, lng_TargetColumn), arr_HeaderColumns, 0)) 
+            End If 
+ 
             On Error GoTo 0 
          
         Next 
@@ -5356,9 +5500,4 @@ Function zCodeLocalGitUpdate() As Boolean
         Call ThisWorkbook.Close(False) 
  
 End Function 
-   
-  
-  
- 
- 
 
