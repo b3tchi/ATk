@@ -174,7 +174,17 @@ Public Enum e_DialogSelectionType
     ExcludeSelection = 1 
 End Enum 
  
+Public Enum e_Se16DisplayLayout 
+    e_Something 
+    e_AlVGrid 
+    e_OldSE16 
+End Enum 
  
+Public Enum e_Se16FieldLabels 
+    e_Names 
+    e_TechNames 
+End Enum 
+  
 Private Declare Function FindWindowEx Lib "User32" Alias "FindWindowExA" (ByVal hWnd1 As Long, ByVal hWnd2 As Long, ByVal lpsz1 As String, ByVal lpsz2 As String) As Long 
 Private Declare Function GetClassName Lib "User32" Alias "GetClassNameA" (ByVal hWnd As Long, ByVal lpClassName As String, ByVal nMaxCount As Long) As Long 
 Private Declare Function IIDFromString Lib "ole32" (ByVal lpsz As Long, ByRef lpiid As UUID) As Long 
@@ -239,7 +249,7 @@ Private Sub z_GetWbkWindows(ByVal hWndMain As Long, ByRef wbk_Ref As Workbook, B
     Exit Sub 
  
 MyErrorHandler: 
-    MsgBox "z_GetWbkWindows" & vbCrLf & vbCrLf & "Err = " & Err.Number & vbCrLf & "Description: " & Err.Description 
+    MsgBox "z_GetWbkWindows" & vbCrLf & vbCrLf & "Err = " & ERR.Number & vbCrLf & "Description: " & ERR.Description 
 End Sub 
  
 Public Function z_GetExcelObjectFromHwnd(ByVal hWnd As Long, ByRef wbk_Ref As Workbook, ByVal str_WorkbookName As String) As Boolean 
@@ -510,7 +520,7 @@ Err:
        
 End Function 
  
-Public Function SapConnectToInstance() As Boolean 
+Public Function SapConnectToInstance(Optional ByVal str_InstanceName As String = "ERP") As Boolean 
     Dim SapGuiAuto As Object 
     Dim SAP_Applic As Object 
     Dim Connection As Object 
@@ -567,6 +577,8 @@ Public Function SapConnectToInstance() As Boolean
          
     End If 
  
+    Set session = Nothing 
+  
     'Check Empty if there is not Empty Session 
     If session Is Nothing Then 
          
@@ -3040,6 +3052,35 @@ Err:
  
     Err.Raise Err.Number 
     Resume 
+  
+End Function 
+  
+Public Function SAPSe16Setup(Optional ByVal layout As e_Se16DisplayLayout = e_AlVGrid, Optional ByVal fieldNames As e_Se16FieldLabels = e_Names, Optional ByVal str_MaxRecords As String = "") As Boolean 
+ 
+    ItemSelect "wnd[0]/mbar/menu[3]/menu[0]" 
+ 
+    ItemSelect "wnd[1]/usr/tabsG_TABSTRIP/tabp0400/ssubTOOLAREA:SAPLWB_CUSTOMIZING:0400/radRSEUMOD-TBALV_GRID" 
+    ItemSelect "wnd[1]/usr/tabsG_TABSTRIP/tabp0400/ssubTOOLAREA:SAPLWB_CUSTOMIZING:0400/radSEUCUSTOM-FIELDTEXT" 
+     
+    Confirm 
+    ConfirmPopUps 
+    'Select Case layout 
+    '    Case e_Something: 
+    '    Case e_AlVGrid: 
+    '    Case e_OldSE16: 
+    'End Select 
+     
+    'Select Case fieldNames 
+    '    Case e_Names: 
+    '    Case e_TechNames: 
+    'End Select 
+ 
+'session.findById("wnd[0]/mbar/menu[3]/menu[0]").Select 
+'session.findById("wnd[1]/usr/tabsG_TABSTRIP/tabp0400/ssubTOOLAREA:SAPLWB_CUSTOMIZING:0400/radRSEUMOD-TBALV_GRID").Select 
+'session.findById("wnd[1]/usr/tabsG_TABSTRIP/tabp0400/ssubTOOLAREA:SAPLWB_CUSTOMIZING:0400/radSEUCUSTOM-FIELDTEXT").Select 
+ 
+'session.findById("wnd[1]/usr/tabsG_TABSTRIP/tabp0400/ssubTOOLAREA:SAPLWB_CUSTOMIZING:0400/txtRSEUMOD-TBMAXSEL").Text = "" 
+ 
  
 End Function 
  
@@ -3157,7 +3198,7 @@ Dim bool_SaveAsDialog As Boolean
      
     Call z_GetWorkbook(wbk_workbook, "* Basis (1)") 
      
-    Call wbk_workbook.SaveAs(str_ExtractPath & "\" & str_ExtractName, 50) '50 excel binary format .xlsb 
+    Call wbk_workbook.SaveAs(str_ExtractPath & "\" & str_ExtractName) '50 excel binary format .xlsb 
      
     Call wbk_workbook.Close(False) 
      
