@@ -3739,6 +3739,7 @@ Function PivotCreateLink( _
 End Function 
  
  
+  
 Function RangeCreateLink( _ 
     ByRef obj_Range As Range, _ 
     ByVal str_RangeName As String, _ 
@@ -3766,11 +3767,41 @@ Function RangeCreateLink( _
  
     Else 
         'TDB Linked on TABLE Or formula 
+        If CStr(wbk_Source.Names(str_RangeName).RefersTo) Like "=*[[]*[]]" Then 
          
+            Dim str_TableName As String 
      
+            str_TableName = Mid(Split(CStr(wbk_Source.Names(str_RangeName).RefersTo), "[")(0), 2) 
+ 
+            Debug.Print wbk_Source.Names(str_RangeName).RefersTo 
+      
+            Dim ws As Worksheet 
+            Dim LO As ListObject 
+            Dim shName As String 
+            Dim FindTableSheet As String 
+         
+            For Each ws In ThisWorkbook.Sheets 
+                On Error Resume Next 
+                Set LO = ws.ListObjects(str_TableName) 
+                If ERR.Number = 0 Then 
+                    FindTableSheet = ws.Name 
+                    Exit For 
+                Else 
+                    ERR.Clear 
+                    FindTableSheet = "Not Found" 
     End If 
+                On Error GoTo 0 
+            Next ws 
      
+            If FindTableSheet <> "Not Found" Then 
+                Set obj_Range = wbk_Source.Worksheets(FindTableSheet).Range(CStr(wbk_Source.Names(str_RangeName).RefersTo)) 
+            End If 
      
+        End If 
+      
+    End If 
+      
+      
     RangeCreateLink = Not (obj_Range Is Nothing) 
  
 End Function 
