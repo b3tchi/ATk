@@ -5143,7 +5143,7 @@ Function zCodeAppend(ByVal str_Code As String, ByVal str_ModuleName As String, O
     Call zSelectCodePan(CodePan, str_ModuleName, wbk_Target) 
  
     With CodePan 
-        Call .InsertLines(IIf(.CountOfLines = 0, 1, .CountOfLines), str_Code) 
+        Call .InsertLines(IIf(.CountOfLines = 0, 1, .CountOfLines + 1), str_Code) 
     End With 
  
  
