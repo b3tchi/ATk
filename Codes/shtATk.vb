@@ -3783,11 +3783,11 @@ Function RangeCreateLink( _
             For Each ws In ThisWorkbook.Sheets 
                 On Error Resume Next 
                 Set LO = ws.ListObjects(str_TableName) 
-                If ERR.Number = 0 Then 
+                If Err.Number = 0 Then 
                     FindTableSheet = ws.Name 
                     Exit For 
                 Else 
-                    ERR.Clear 
+                    Err.Clear 
                     FindTableSheet = "Not Found" 
     End If 
                 On Error GoTo 0 
