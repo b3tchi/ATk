@@ -1895,7 +1895,7 @@ Err:
      
 End Sub 
  
-Public Sub LogAdd(Optional ByVal str_itemId$, Optional ByVal str_itemValue$, Optional ByRef str_result, Optional lng_LogActionFlag As log_flag = info) 
+Public Sub LogAdd(Optional ByVal str_itemId As String, Optional ByVal str_itemValue As String, Optional ByVal str_result As String, Optional lng_LogActionFlag As log_flag = info) 
  
     Dim str_RecordValue$ 
     'Dim str_itemValue$ 

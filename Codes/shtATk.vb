@@ -287,6 +287,8 @@ End Function
  
 Function PickerFile(ByRef rng_FilePath As Range, Optional ByVal str_DialogText As String = "") As Boolean 
  
+    On Error GoTo err_AtkError 
+ 
     With Application.FileDialog(msoFileDialogFilePicker) 
  
         .AllowMultiSelect = False 
@@ -299,8 +301,16 @@ Function PickerFile(ByRef rng_FilePath As Range, Optional ByVal str_DialogText A
  
     End With 
  
+exit_ok: 
+Exit Function 
+err_AtkError: 
+  
+    If frm_GlErr.z_Show Then Resume 
+  
 End Function 
 Function PickerFolder(ByRef rng_FilePath As Range, Optional ByVal str_DialogText As String = "") As Boolean 
+ 
+    On Error GoTo err_AtkError 
  
     With Application.FileDialog(msoFileDialogFolderPicker) 
  
@@ -313,6 +323,13 @@ Function PickerFolder(ByRef rng_FilePath As Range, Optional ByVal str_DialogText
         End If 
     End With 
  
+  
+exit_ok: 
+Exit Function 
+err_AtkError: 
+  
+    If frm_GlErr.z_Show(Err) Then Resume 
+    
 End Function 
  
 Function PickerOutlook(ByRef rng_FolderPath As Range, Optional ByVal str_DialogText As String = "") As Boolean 
@@ -812,9 +829,9 @@ Public Function DocumentTableLoad(ByVal obj_Table As Object, ByVal t_Table As Li
     End With 
      
 End Function 
-Function MacroFinish() 
+Function MacroFinish(Optional bool_ForceFinish As Boolean = False) 
  
-    If lng_RunLevel <> Me.Range(adr_RunLevel) Then 'not same then error reset 
+    If lng_RunLevel <> Me.Range(adr_RunLevel) Or bool_ForceFinish Then 'not same then error reset 
         'Error Recover 
         lng_RunLevel = 1 
         Me.Range(adr_RunLevel) = lng_RunLevel 
@@ -869,9 +886,10 @@ End Function
  
 Function TableClear(ByVal tbl_Object As ListObject) 
  
+    On Error GoTo err_AtkError 
     Application.Statusbar = "Clearing Table " & tbl_Object.Name 
  
-    On Error GoTo Err 
+    'EXECUTE 
  
     Dim rng_ClearRange As Range 
      
@@ -892,29 +910,27 @@ Function TableClear(ByVal tbl_Object As ListObject)
     tbl_Object.Range.AutoFilter 
     tbl_Object.ShowAutoFilter = True 
  
-'clear table data 
+'clear first input row table data 
     If tbl_Object.Range.Columns.Count = 1 Then 'avoid whole table removal 
          tbl_Object.HeaderRowRange.Offset(1).ClearContents 'clear just data 
     Else 
         If z_ContainsCellType(tbl_Object.HeaderRowRange.Offset(1), xlCellTypeConstants) Then 
          tbl_Object.HeaderRowRange.Offset(1).SpecialCells(xlCellTypeConstants).ClearContents 'clear just data 
-        Else 
-            Exit Function 
+            tbl_Object.Range.Calculate 
     End If 
     End If 
      
-    tbl_Object.Range.Calculate 
+    'EXIT 
      
-Err: 
-    Application.Statusbar = False 
+exit_ok: 
+Exit Function 
+err_AtkError: 
  
-    Debug.Print Err.Description 
+    Debug.Print Err.Number & vbTab & Err.Description 
  
-    Select Case Err.Number 
-        Case 0 
-        Case 1004 
-    End Select 
-'Resume 
+    If Err.Number = 1004 Then Resume exit_ok 'skip if this error nothing to delete 
+    If frm_GlErr.z_Show(Err) Then Resume 'general err_handling 
+    
 End Function 
  
 Function TableClearAll(ByVal tbl_Object As ListObject) 
@@ -1845,13 +1861,31 @@ End Function
 Function TableRemoteRefresh( _ 
                             ByVal tbl_Object As ListObject _ 
                                                             ) As Boolean 
-    On Error Resume Next 
+    On Error GoTo err_AtkError 
      
     Application.Statusbar = "Refreshing remote data in table " & tbl_Object.Name 
  
+'EXECUTE 
+  
     Call tbl_Object.QueryTable.Refresh(BackgroundQuery:=False) 
  
+    DoEvents 
+    DoEvents 
+     
     Call tbl_Object.Range.Calculate 
+ 
+    DoEvents 
+    DoEvents 
+     
+    'Err.Raise 666, , "Teste" 
+     
+'EXIT 
+ 
+exit_ok: 
+Exit Function 
+err_AtkError: 
+  
+    If frm_GlErr.z_Show(Err) Then Resume 'general err_handling 
  
 End Function 
  
