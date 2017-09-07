@@ -237,6 +237,8 @@ Function MacroStart( _
                      
 'Try to load Variables to Memory 
  
+    Debug.Print "ATk-S:" & lng_RunLevel & Now 
+     
     'check if succesfully finished 
     If Me.Range(adr_RunLevel) <> lng_RunLevel Then 
         Application.Calculation = Me.Range(adr_Calculations) 
@@ -831,6 +833,8 @@ Public Function DocumentTableLoad(ByVal obj_Table As Object, ByVal t_Table As Li
 End Function 
 Function MacroFinish(Optional bool_ForceFinish As Boolean = False) 
  
+    Debug.Print "ATk-E:" & lng_RunLevel & Now 
+  
     If lng_RunLevel <> Me.Range(adr_RunLevel) Or bool_ForceFinish Then 'not same then error reset 
         'Error Recover 
         lng_RunLevel = 1 
