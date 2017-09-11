@@ -264,6 +264,9 @@ Public Function z_GetExcelObjectFromHwnd(ByVal hWnd As Long, ByRef wbk_Ref As Wo
     Dim obj As Object 
     If AccessibleObjectFromWindow(hWnd, OBJID_NATIVEOM, iid, obj) = 0 Then 'S_OK 
         Dim objApp As Excel.Application 
+         
+        If TypeName(obj) <> "ProtectedViewWindow" Then 'skip protected view windows 
+             
         Set objApp = obj.Application 
         
         Dim wbk_Cursor As Workbook 
@@ -276,6 +279,8 @@ Public Function z_GetExcelObjectFromHwnd(ByVal hWnd As Long, ByRef wbk_Ref As Wo
         Next 
  
         fOk = True 
+            
+    End If 
     End If 
  
     z_GetExcelObjectFromHwnd = fOk 
