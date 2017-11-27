@@ -237,7 +237,7 @@ Function MacroStart( _
                      
 'Try to load Variables to Memory 
  
-    Debug.Print "ATk-S:" & lng_RunLevel & Now 
+    Debug.Print "ATk-S:" & vbTab & lng_RunLevel & vbTab & "A:"; Join(Array(CLng(Application.DisplayAlerts), CLng(Application.ScreenUpdating), Application.Calculation, CLng(Application.EnableEvents)), "|" & vbTab) & vbTab & Now 
      
     'check if succesfully finished 
     If Me.Range(adr_RunLevel) <> lng_RunLevel Then 
@@ -330,10 +330,12 @@ exit_ok:
 Exit Function 
 err_AtkError: 
   
-    If frm_GlErr.z_Show(Err) Then Resume 
+     If frm_GlErr.z_Show(Err) Then: Stop: Resume 
     
 End Function 
  
+  
+  
 Function PickerOutlook(ByRef rng_FolderPath As Range, Optional ByVal str_DialogText As String = "") As Boolean 
  
     If Not z_mLinkOutlook Then Exit Function 
@@ -833,7 +835,9 @@ Public Function DocumentTableLoad(ByVal obj_Table As Object, ByVal t_Table As Li
 End Function 
 Function MacroFinish(Optional bool_ForceFinish As Boolean = False) 
  
-    Debug.Print "ATk-E:" & lng_RunLevel & Now 
+    DoEvents 
+  
+    Debug.Print "ATk-E:" & vbTab & lng_RunLevel & vbTab & "A:"; Join(Array(lng_ApplicationAlerts, lng_ApplicationScreen, lng_ApplicationCalculations, lng_ApplicationEvents), "|") & vbTab & Now 
   
     If lng_RunLevel <> Me.Range(adr_RunLevel) Or bool_ForceFinish Then 'not same then error reset 
         'Error Recover 
@@ -1869,8 +1873,12 @@ Function TableRemoteRefresh( _
      
     Application.Statusbar = "Refreshing remote data in table " & tbl_Object.Name 
  
-'EXECUTE 
   
+'Clear Clipboard 
+    Application.CutCopyMode = False 
+  
+ 
+'EXECUTE 
     Call tbl_Object.QueryTable.Refresh(BackgroundQuery:=False) 
  
     DoEvents 
@@ -1881,15 +1889,16 @@ Function TableRemoteRefresh( _
     DoEvents 
     DoEvents 
      
-    'Err.Raise 666, , "Teste" 
-     
-'EXIT 
- 
 exit_ok: 
+    TableRemoteRefresh = True 
 Exit Function 
 err_AtkError: 
   
-    If frm_GlErr.z_Show(Err) Then Resume 'general err_handling 
+    If frm_GlErr.z_Show(Err) Then 
+        Stop: Resume 
+    Else 
+        Resume err_AtkError 
+    End If 
  
 End Function 
  
@@ -1928,8 +1937,6 @@ Function TableToCSV( _
     If rng_Data Is Nothing Then 
         Exit Function 
     End If 
- 
-     
  
     arr_Source = rng_Data.Value 
      
@@ -3811,7 +3818,7 @@ Function RangeCreateLink( _
      
             str_TableName = Mid(Split(CStr(wbk_Source.Names(str_RangeName).RefersTo), "[")(0), 2) 
  
-            Debug.Print wbk_Source.Names(str_RangeName).RefersTo 
+            'Debug.Print wbk_Source.Names(str_RangeName).RefersTo 
       
             Dim ws As Worksheet 
             Dim LO As ListObject 
@@ -4469,6 +4476,8 @@ End Function
  
 Public Function xLinkExcelObjects() 
  
+    On Error GoTo err_AtkError 
+  
 'Parameters Cleanup 
     Call z_CleanRefErrNames 
     Call z_FillUnamedParameters 
@@ -4668,13 +4677,24 @@ Public Function xLinkExcelObjects()
     If cc_PivotInitiation.Count > 0 Then str_CodePart = str_CodePart & vbCr 
      
     str_CodePart = str_CodePart & "End Function" & vbCr & vbCr 
-         
-         
+' 
 'CLEAR & PRINT NEW 
     Set CodePan = Nothing 
  
     Call zCodeRemove("mod_AtkBindings") 
     Call zCodeAppend(str_CodePart, "mod_ATkBindings") 
+     
+      
+exit_ok: 
+    xLinkExcelObjects = True 
+Exit Function 
+err_AtkError: 
+  
+    If frm_GlErr.z_Show(Err) Then 
+        Stop: Resume 
+    Else 
+        Resume err_AtkError 
+    End If 
      
 End Function 
  
