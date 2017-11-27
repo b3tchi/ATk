@@ -5528,7 +5528,7 @@ End Function
  
 Function zLocalGitCodeImport(ByVal str_ModuleName, Optional ByRef wbk_Data As Workbook) As Boolean 
  
-    zCodeImport = False 
+    zLocalGitCodeImport = False 
  
     'check if not importing ATK 
      
