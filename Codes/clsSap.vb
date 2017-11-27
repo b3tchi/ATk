@@ -185,6 +185,11 @@ Public Enum e_Se16FieldLabels
     e_TechNames 
 End Enum 
   
+Public Enum e_AutoStartSAP 
+    e_FullyAutoSSO 
+    e_ConfirmSSO 
+End Enum 
+  
 Private Declare Function FindWindowEx Lib "User32" Alias "FindWindowExA" (ByVal hWnd1 As Long, ByVal hWnd2 As Long, ByVal lpsz1 As String, ByVal lpsz2 As String) As Long 
 Private Declare Function GetClassName Lib "User32" Alias "GetClassNameA" (ByVal hWnd As Long, ByVal lpClassName As String, ByVal nMaxCount As Long) As Long 
 Private Declare Function IIDFromString Lib "ole32" (ByVal lpsz As Long, ByRef lpiid As UUID) As Long 
@@ -210,13 +215,23 @@ Private Sub z_GetWorkbook(ByRef wbk_Ref As Workbook, Optional ByVal str_Workbook
  
     Do While hWndMain <> 0 
         z_GetWbkWindows hWndMain, wbk_Ref, str_WorkbookName 
+         
+        If Not wbk_Ref Is Nothing Then 
+            If wbk_Ref.Name Like str_WorkbookName Then 
+                GoTo Exit_Default 
+            End If 
+        End If 
+         
         hWndMain = FindWindowEx(0&, hWndMain, "XLMAIN", vbNullString) 
+     
     Loop 
  
+Exit_Default: 
     Exit Sub 
  
 MyErrorHandler: 
     MsgBox "GetAllWorkbookWindowNames" & vbCrLf & vbCrLf & "Err = " & Err.Number & vbCrLf & "Description: " & Err.Description 
+    Resume Exit_Default 
 End Sub 
  
 Private Sub z_GetWbkWindows(ByVal hWndMain As Long, ByRef wbk_Ref As Workbook, ByVal str_WorkbookName As String) 
@@ -285,9 +300,16 @@ Public Function z_GetExcelObjectFromHwnd(ByVal hWnd As Long, ByRef wbk_Ref As Wo
  
     z_GetExcelObjectFromHwnd = fOk 
  
+Err_Default: 
+  
     Exit Function 
  
 MyErrorHandler: 
+ 
+    If Err.Number = 438 Then 
+        Resume Err_Default 
+    End If 
+ 
     MsgBox "z_GetExcelObjectFromHwnd" & vbCrLf & vbCrLf & "Err = " & Err.Number & vbCrLf & "Description: " & Err.Description 
 End Function 
  
@@ -302,11 +324,8 @@ Private Sub Class_Initialize()
  
 End Sub 
  
-Private Sub Class_Terminate() 
  
-    'Close Session opened by macro 
-        If bool_AutoClose = True Then 
-            If Not session Is Nothing Then 
+Public Function SapCloseSession() As Boolean 
                  
                 Dim obj_Parent As Object 
                  
@@ -315,14 +334,27 @@ Private Sub Class_Terminate()
                 On Error GoTo 0 
              
                 If Not obj_Parent Is Nothing Then 
+     
                 If session.Parent.Children.Count > 1 Then 'close session when its more the one session opened 
                     session.findById("wnd[0]/tbar[0]/okcd").Text = "/i" 
                     Confirm 
                 End If 
+     
             End If 
+  
+End Function 
+  
+  
+Private Sub Class_Terminate() 
+  
+    'Close Session opened by macro 
+        If bool_AutoClose = True Then 
+            If Not session Is Nothing Then 
+                Call SapCloseSession 
         End If 
         End If 
          
+          
     'if there were no loging during macro 
         If cc_IssueLog Is Nothing Then Exit Sub 
  
@@ -597,7 +629,7 @@ Public Function SapConnectToInstance(Optional ByVal str_InstanceName As String =
         'find if any empty session is not open 
         Do Until CBool(lng_SessionCursor > (lng_SessionsCount - 1)) 
              
-            If CBool(Connection.Children(CLng(lng_SessionCursor)).findById("wnd[0]").Text Like "SAP Easy Access*") Then 
+            If CBool(Connection.Children(CLng(lng_SessionCursor)).findById("wnd[0]").Text Like "*SAP Easy Access*") Then 
                 bool_EmptySessionFound = True 
                 Exit Do 
             End If 
@@ -619,6 +651,8 @@ Public Function SapConnectToInstance(Optional ByVal str_InstanceName As String =
             DoEvents: Sleep 300 
              
         End If 
+ 
+         
     End If 
      
     session.findById("wnd[0]").maximize 
@@ -955,7 +989,7 @@ On Error GoTo Err
     'lng_table_absolute_cursor = -1 
     bool_Found = False 
      
-    If lng_action = sapKey Then str_empty_symbol = " " Else str_empty_symbol = "" 'key has differnt empty value 
+    If lng_action = sapkey Then str_empty_symbol = " " Else str_empty_symbol = "" 'key has differnt empty value 
     If IsMissing(anyValue) Then anyValue = str_empty_symbol 
      
      
@@ -1480,9 +1514,12 @@ With session.findById(strListAddress)
     ListToArray = arrTemp 
  
 End Function 
+  
+  
+Public Function GoToTransaction(ByVal str_transaction_name As String) As Boolean 
  
+    On Error GoTo err_AtkError 
  
-Public Function GoToTransaction(ByRef str_transaction_name$) As Boolean 
 'check for top level 
     If Not session.findById("wnd[0]").Text Like "*SAP Easy Access*" Then 
         Select Case MsgBox("Close current actions in SAP and run macro?", vbExclamation Or vbOKCancel) 
@@ -1495,6 +1532,13 @@ Public Function GoToTransaction(ByRef str_transaction_name$) As Boolean
      
     session.findById("wnd[0]/tbar[0]/okcd").Text = str_transaction_name 
     Confirm 
+      
+exit_ok: 
+    Exit Function 
+         
+err_AtkError: 
+ 
+    If frm_GlErr.z_Show(Err) Then: Stop: Resume 
      
 End Function 
  
@@ -1516,7 +1560,7 @@ Public Sub GoToMainPage()
      
     session.findById("wnd[1]/usr/btnSPOP-OPTION2").press  'if exit note 
      
-    Do While Not session.findById("wnd[0]").Text Like "*SAP Easy Access" And lngWatchdog < 15 
+    Do While Not session.findById("wnd[0]").Text Like "*SAP Easy Access*" And lngWatchdog < 15 
         PressMainButton Exit_15 
          
         'Dim test 
@@ -1931,9 +1975,6 @@ Public Sub LogAdd(Optional ByVal str_itemId As String, Optional ByVal str_itemVa
                  
         End If 
     End If 
- 
- 
- 
          
     If cc_IssueLog Is Nothing Then Set cc_IssueLog = New clsCollection 
 'FINAL LOG LINE 
@@ -3141,6 +3182,11 @@ Public Function DialogExtractCSV( _
         Kill (str_ExtractPath & str_ExtractName) 
     On Error GoTo 0 
  
+    'try to create path 
+    On Error Resume Next 
+        MkDir str_ExtractPath 
+    On Error GoTo 0 
+  
     ItemEnter saptext, str_ExtractPath, "wnd[1]/usr/ctxtDY_PATH" 
     ItemEnter saptext, str_ExtractName, "wnd[1]/usr/ctxtDY_FILENAME" 
     ItemEnter saptext, "0000", "wnd[1]/usr/ctxtDY_FILE_ENCODING" 
@@ -3185,10 +3231,9 @@ Dim bool_SaveAsDialog As Boolean
          
     End If 
  
- 
     ItemSelect "wnd[1]/usr/radRB_OTHERS" 
      
-    ItemEnter sapKey, "08", "wnd[1]/usr/cmbG_LISTBOX" 
+    ItemEnter sapkey, "08", "wnd[1]/usr/cmbG_LISTBOX" 
  
     ItemPress "wnd[0]/tbar[0]/btn[0]" 
  
@@ -3200,15 +3245,21 @@ Dim bool_SaveAsDialog As Boolean
     Confirm 
      
     Dim wbk_workbook As Workbook 
+      
+    'try to create path 
+    On Error Resume Next 
+        MkDir str_ExtractPath 
+    On Error GoTo 0 
      
     Call z_GetWorkbook(wbk_workbook, "* Basis (1)") 
      
     Call wbk_workbook.SaveAs(str_ExtractPath & "\" & str_ExtractName) '50 excel binary format .xlsb 
-     
     Call wbk_workbook.Close(False) 
      
     Confirm 
  
 End Function 
+  
+ 
  
 
