@@ -5497,7 +5497,7 @@ Sub zCodeRemove(ByVal str_ModuleName As String, Optional ByRef wbk_Target As Wor
  
 End Sub 
  
-Function zCodeExport(ByVal str_ModuleName, Optional ByRef wbk_Data As Workbook) As Boolean 
+Function zLocalGitCodeExport(ByVal str_ModuleName, Optional ByRef wbk_Data As Workbook) As Boolean 
      
     Dim arr_Code 
      
@@ -5522,10 +5522,11 @@ Function zCodeExport(ByVal str_ModuleName, Optional ByRef wbk_Data As Workbook) 
  
     End With 
  
-    zCodeExport = True 
+    zLocalGitCodeExport = True 
  
 End Function 
-Function zCodeImport(ByVal str_ModuleName, Optional ByRef wbk_Data As Workbook) As Boolean 
+ 
+Function zLocalGitCodeImport(ByVal str_ModuleName, Optional ByRef wbk_Data As Workbook) As Boolean 
  
     zCodeImport = False 
  
@@ -5557,11 +5558,11 @@ Function zCodeImport(ByVal str_ModuleName, Optional ByRef wbk_Data As Workbook) 
     Call zCodeRemove(str_ModuleName, wbk_Data) 
     Call zCodeAppend(str_Code, str_ModuleName, wbk_Data) 
      
-    zCodeImport = True 
+    zLocalGitCodeImport = True 
  
 End Function 
  
-Function zCodeLocalGitUpdate() As Boolean 
+Function zLocalGitCodeUpdate() As Boolean 
          
         Dim str_OriginalName As String 
         str_OriginalName = ThisWorkbook.Name 
@@ -5579,8 +5580,9 @@ Function zCodeLocalGitUpdate() As Boolean
         Set wbk_NewUpdated = Workbooks.Open(ThisWorkbook.Path & "\" & str_OriginalName) 
          
         'Update Codes 
-        Call zCodeImport("shtATk", wbk_NewUpdated) 
-        Call zCodeImport("clsSap", wbk_NewUpdated) 
+        Call zLocalGitCodeImport("shtATk", wbk_NewUpdated) 
+        Call zLocalGitCodeImport("clsSap", wbk_NewUpdated) 
+        Call zLocalGitCodeImport("frm_GlErr", wbk_NewUpdated) 
          
         'Close backup and activate updated 
         wbk_NewUpdated.Activate 
@@ -5589,4 +5591,6 @@ Function zCodeLocalGitUpdate() As Boolean
         Call ThisWorkbook.Close(False) 
  
 End Function 
+ 
+ 
 
