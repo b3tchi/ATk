@@ -310,6 +310,7 @@ err_AtkError:
     If frm_GlErr.z_Show Then Resume 
   
 End Function 
+ 
 Function PickerFolder(ByRef rng_FilePath As Range, Optional ByVal str_DialogText As String = "") As Boolean 
  
     On Error GoTo err_AtkError 
@@ -3861,7 +3862,9 @@ Function EmailCopyFromFile( _
     Optional var_Cc, _ 
     Optional var_Bcc _ 
     ) As Boolean 
+  
  
+    On Error GoTo err_AtkError 
    
     EmailCopyFromFile = False 
      
@@ -3869,30 +3872,26 @@ Function EmailCopyFromFile( _
     Dim str_FinalPath As String 
  
     If z_mFilePathChecker(str_FinalPath, str_FileName, str_DirPath, "Please select Outlook email file", "*.msg") = False Then Exit Function 
- 
-    Dim app_Outlook As Object 'Outlook.Application 
      
     'Setup Outlook 
- 
-    Set app_Outlook = GetObject(, "Outlook.Application") 'Set app_Outlook = Outlook.Application 
+    Call z_mLinkOutlook 
      
     Dim obj_DefaultFolder As Object 
-    Dim obj_EmailTemp As Object 
-     
     Call z_mOutlookGetDefaultFolder(obj_DefaultFolder, e_Drafts) 
      
-    Set obj_Email = app_Outlook.CreateItemFromTemplate(str_FinalPath, obj_DefaultFolder) 
+    Dim obj_EmailTemplate As Object 
+    Set obj_EmailTemplate = app_Outlook.CreateItemFromTemplate(str_FinalPath, obj_DefaultFolder) 
+     
     EmailCopyFromFile = True 
-    obj_Email.Save 
- 
-    'To correct language encoding  in neccerary create new copy of email 
-    Set obj_EmailTemp = obj_Email.Copy 
      
-    obj_Email.Delete 
+    obj_EmailTemplate.display 
+    DoEvents 
      
-    Set obj_Email = obj_EmailTemp 
+    'To correct language encoding is neccerary create new copy of email 
+    Dim obj_EmailTemp As Object 
+    Set obj_EmailTemp = obj_EmailTemplate.Copy 
      
-    With obj_Email 
+    With obj_EmailTemp 
      
         On Error Resume Next 
             If Not IsMissing(var_To) Then .To = Join(z_mCovertToSimpleArray(var_To), ";") 
@@ -3900,16 +3899,39 @@ Function EmailCopyFromFile( _
             If Not IsMissing(var_Bcc) Then .Bcc = Join(z_mCovertToSimpleArray(var_Bcc), ";") 
             If Not IsMissing(str_Subject) Then .Subject = Join(z_mCovertToSimpleArray(str_Subject), ";") 
         On Error GoTo 0 
+          
          
-        .display 
         .Save 
+        .display 
          
     End With 
      
-    Call obj_Email.Recipients.ResolveAll 
+    obj_EmailTemplate.Delete 
+    DoEvents 
+      
+    'Resolve recipients 
+    Call obj_EmailTemp.Recipients.ResolveAll 
+      
+    Set obj_Email = obj_EmailTemp 
      
     EmailCopyFromFile = True 
+      
+    Set obj_EmailTemp = Nothing 
      
+     
+exit_ok: 
+    EmailCopyFromFile = True 
+ 
+Exit Function 
+err_AtkError: 
+     
+    If frm_GlErr.z_Show(Err) Then 
+        Stop: Resume 
+    Else 
+        Resume err_AtkError 
+    End If 
+ 
+      
 End Function 
  
 Function EmailSend( _ 
@@ -3939,8 +3961,8 @@ Function EmailReplaceText( _
     Dim str_HtmlBody$ 
     Dim i_TextCursor As Long 
  
-    Call z_mCovertToSimpleArray(var_TextToReplace) 
-    Call z_mCovertToSimpleArray(var_ReplaceWith) 
+    var_TextToReplace = z_mCovertToSimpleArray(var_TextToReplace) 
+    var_ReplaceWith = z_mCovertToSimpleArray(var_ReplaceWith) 
  
     If UBound(var_ReplaceWith) <> UBound(var_TextToReplace) Then Exit Function 
  
@@ -3956,25 +3978,49 @@ Function EmailReplaceText( _
  
 End Function 
  
- 
 Function EmailAttachWorkbook( _ 
     ByRef obj_Email As Object, _ 
-    Optional ByRef wbk_Source As Workbook, _ 
-    Optional ByRef str_WorkbookName As String _ 
+    Optional ByVal wbk_Source As Workbook, _ 
+    Optional ByVal str_WorkbookName As String _ 
     ) As Boolean 
-   
-    'Dim obj_Email As Object 
- 
-    If wbk_Source Is Nothing Then Set wbk_Source = ThisWorkbook 
+    
+    'Create Temporary file neccecary if different file name TDB 
+    If wbk_Source Is Nothing Then 
+        Set wbk_Source = ThisWorkbook 
+    End If 
  
     wbk_Source.Save 
- 
-'Create Temporary file neccecary if different file name TDB 
      
+    Dim obj_Attachment As Object 
  
     With obj_Email 
-        .Attachments.Add wbk_Source.FullName 
+        Set obj_Attachment = .Attachments.Add(wbk_Source.FullName) 
+         
+        If str_WorkbookName <> "" Then 
+     
+            Dim str_CurrentName As String 
+            Dim str_NewName As String 
+             
+            'Set outmail.Attachments(1) = atmt 
+            str_CurrentName = obj_Attachment.Filename                                 ' Get Name Of File Attached 
+   
+            str_NewName = str_WorkbookName & Mid(str_CurrentName, InStrRev(str_CurrentName, ".")) 
+ 
+            Call obj_Attachment.SaveAsFile(Environ("Temp") & "\" & str_NewName)                           ' Save as NewFileName 
+            Call .Attachments.Add(Environ("Temp") & "\" & str_NewName)              ' Attach the file with a new name 
+ 
+            On Error Resume Next 
+                Kill Environ("Temp") & "\" & str_NewName 
+            On Error GoTo 0 
+ 
+            DoEvents 
+            obj_Attachment.Delete                   ' Delete the file with the old name 
+            DoEvents 
+     
+        End If 
+ 
         .Save 
+     
     End With 
       
 End Function 
@@ -4086,11 +4132,23 @@ Private Function z_mOutlookGetDefaultFolder( _
     ByVal DefaultFolderType As OutlookFolders _ 
     ) As Boolean 
      
-    Dim app_Outlook As Object 'Outlook.Application 
      
-    'Setup Outlook 
-    Set app_Outlook = GetObject(, "Outlook.Application") 'Set app_Outlook = Outlook.Application 
+    Dim lng_TryCounter As Long 
+    lng_TryCounter = 0 
+     
+    Do Until lng_TryCounter = 6 
+         
+        DoEvents 
     Set obj_OutlookFolder = app_Outlook.GetNamespace("MAPI").GetDefaultFolder(16) '16 = olFolderDrafts 
+        DoEvents 
+          
+        If obj_OutlookFolder Is Nothing Then 
+            lng_TryCounter = lng_TryCounter + 1 
+        Else 
+            lng_TryCounter = 6 
+        End If 
+         
+    Loop 
      
 End Function 
  
