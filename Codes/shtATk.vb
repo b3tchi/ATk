@@ -71,6 +71,12 @@ Public Enum e_DirectionCopy
     e_OutsideTable 
 End Enum 
   
+Public Enum e_Action 
+    e_Yes = -1 
+    e_No = 0 
+    e_Prompt = 1 
+End Enum 
+   
 'Linked Applications 
 Dim app_Word As Object 'Word.Application 
 Dim app_Outlook As Object 
@@ -221,10 +227,14 @@ FAIL:
     Application.Statusbar = False 
 End Function 
   
-Function z_mChDirNet(ByVal str_FilePath As String) As Boolean 
+Function z_mChDirNet( _ 
+    ByVal str_FilePath As String _ 
+    ) As Boolean 
+         
     Dim lng_Result As Long 
     lng_Result = SetCurrentDirectoryA(str_FilePath) 
     z_mChDirNet = lng_Result <> 0 
+ 
 End Function 
  
 Function MacroStart( _ 
@@ -287,7 +297,10 @@ Function MacroStart( _
      
 End Function 
  
-Function PickerFile(ByRef rng_FilePath As Range, Optional ByVal str_DialogText As String = "") As Boolean 
+Function PickerFile( _ 
+    ByRef rng_FilePath As Range, _ 
+    Optional ByVal str_DialogText As String = "" _ 
+    ) As Boolean 
  
     On Error GoTo err_AtkError 
  
@@ -311,7 +324,10 @@ err_AtkError:
   
 End Function 
  
-Function PickerFolder(ByRef rng_FilePath As Range, Optional ByVal str_DialogText As String = "") As Boolean 
+Function PickerFolder( _ 
+    ByRef rng_FilePath As Range, _ 
+    Optional ByVal str_DialogText As String = "" _ 
+    ) As Boolean 
  
     On Error GoTo err_AtkError 
  
@@ -337,7 +353,10 @@ End Function
  
   
   
-Function PickerOutlook(ByRef rng_FolderPath As Range, Optional ByVal str_DialogText As String = "") As Boolean 
+Function PickerOutlook( _ 
+    ByRef rng_FolderPath As Range, _ 
+    Optional ByVal str_DialogText As String = "" _ 
+    ) As Boolean 
  
     If Not z_mLinkOutlook Then Exit Function 
  
@@ -351,7 +370,10 @@ Function PickerOutlook(ByRef rng_FolderPath As Range, Optional ByVal str_DialogT
  
 End Function 
  
-Private Function z_mOutlookGetFolder(ByRef obj_OutlookFolder As Object, Optional ByVal FolderPath As String) As Boolean 
+Private Function z_mOutlookGetFolder( _ 
+    ByRef obj_OutlookFolder As Object, _ 
+    Optional ByVal FolderPath As String _ 
+    ) As Boolean 
      
     z_mOutlookGetFolder = False 
      
@@ -373,7 +395,7 @@ Private Function z_mOutlookGetFolder(ByRef obj_OutlookFolder As Object, Optional
         FoldersArray = Split(FolderPath, "\") 
          
          
-        Set SearchedFolder = app_Outlook.session.Folders.Item(FoldersArray(0)) 
+        Set SearchedFolder = app_Outlook.Session.Folders.Item(FoldersArray(0)) 
          
         If Not SearchedFolder Is Nothing Then 
             For i = 1 To UBound(FoldersArray, 1) 
@@ -398,7 +420,10 @@ GetFolder_Error:
 End Function 
  
  
-Function EmailMoveToFolder(ByRef obj_OlItem As Object, ByVal var_FolderMoveTo As Variant) As Boolean 
+Function EmailMoveToFolder( _ 
+    ByRef obj_OlItem As Object, _ 
+    ByVal var_FolderMoveTo As Variant _ 
+    ) As Boolean 
  
     If Not z_mLinkOutlook Then Exit Function 
  
@@ -419,7 +444,7 @@ Function EmailMoveToFolder(ByRef obj_OlItem As Object, ByVal var_FolderMoveTo As
  
     If z_mOutlookGetFolder(folder, str_FolderPath) = False Then EmailMoveToFolder = False: Exit Function 
  
-    Call obj_OlItem.Move(folder) 
+    Call obj_OlItem.move(folder) 
  
  
 End Function 
@@ -2299,7 +2324,7 @@ On Error GoTo Exit_Function
     oldPath = wbk_Source.FullName 'Folder file is located in 
     newPath = str_NewWorkbookPathTemp 'Folder to copy file to 
     Set fs = CreateObject("Scripting.FileSystemObject") 
-    fs.CopyFile oldPath, newPath   'This file was an .xls file 
+    fs.copyfile oldPath, newPath   'This file was an .xls file 
     Set fs = Nothing 
  
  
@@ -5215,7 +5240,10 @@ End Function
  
 End Function 
  
- Function zModuleExists(ByVal str_ModuleName As String, Optional ByRef wbk_Target As Workbook = Nothing) As Boolean 
+Function zModuleExists( _ 
+    ByVal str_ModuleName As String, _ 
+    Optional ByRef wbk_Target As Workbook = Nothing _ 
+        ) As Boolean 
  
     If wbk_Target Is Nothing Then Set wbk_Target = ThisWorkbook 
  
@@ -5234,7 +5262,11 @@ End Function
  
 End Function 
  
- Function zCodeGet(ByRef arr_Code As Variant, ByVal str_ModuleName As String, Optional ByRef wbk_Target As Workbook = Nothing) As Boolean 
+Function zCodeGet( _ 
+    ByRef arr_Code As Variant, _ 
+    ByVal str_ModuleName As String, _ 
+    Optional ByRef wbk_Target As Workbook = Nothing _ 
+        ) As Boolean 
      
     Dim CodePan As Object 
  
@@ -5251,7 +5283,11 @@ End Function
      
 End Function 
  
-Function zCodeAppend(ByVal str_Code As String, ByVal str_ModuleName As String, Optional ByRef wbk_Target As Workbook = Nothing) As Boolean 
+Function zCodeAppend( _ 
+    ByVal str_Code As String, _ 
+    ByVal str_ModuleName As String, _ 
+    Optional ByRef wbk_Target As Workbook = Nothing _ 
+        ) As Boolean 
      
     Dim CodePan As Object 
      
@@ -5266,7 +5302,8 @@ Function zCodeAppend(ByVal str_Code As String, ByVal str_ModuleName As String, O
 End Function 
  
 Function xAddParameter( _ 
-    ByVal str_ParameterName As String) As Boolean 
+    ByVal str_ParameterName As String _ 
+        ) As Boolean 
  
 On Error GoTo Err 
  
@@ -5300,7 +5337,9 @@ Resume
  
 End Function 
  
-Function FileExist(ByVal var_FilePath As Variant) As Boolean 
+Function FileExist( _ 
+    ByVal var_FilePath As Variant _ 
+        ) As Boolean 
      
     Dim str_Path As String 
  
@@ -5312,7 +5351,77 @@ Function FileExist(ByVal var_FilePath As Variant) As Boolean
  
 End Function 
   
-Function z_mFsoOpen() As Boolean 
+Function FileCopy( _ 
+    ByVal var_FilePath As Variant, _ 
+    Optional ByVal var_FileName As Variant, _ 
+    Optional ByVal var_SourceFile As Variant, _ 
+    Optional ByVal lng_Overwrite As e_Action = e_Prompt _ 
+        ) As Boolean 
+      
+    Dim str_DestFilePath As String 
+    Dim str_DestFileName As String 
+    Dim str_SourceFullPath As String 
+    Dim str_SourceFileName As String 
+     
+    'Source File 
+    If IsMissing(var_SourceFile) Then 
+        str_SourceFullPath = ThisWorkbook.FullName 
+    Else 
+        str_SourceFullPath = CStr(z_mCovertToSimpleArray(var_SourceFile)(0)) 
+    End If 
+     
+    'TBD Check if Source File Exists 
+    str_SourceFileName = Mid(str_SourceFullPath, InStrRev(str_SourceFullPath, "\") + 1) 
+     
+    'Destination File 
+    str_DestFilePath = CStr(z_mCovertToSimpleArray(var_FilePath)(0)) 
+  
+    'open file 
+    Call z_mFsoOpen 
+         
+    'rename file if needed 
+    str_DestFileName = CStr(z_mCovertToSimpleArray(var_FileName)(0)) 
+         
+    'Copy File 
+    With fso_Object 
+     
+        Dim bool_OverWrite As Boolean 
+     
+        If .FileExists(str_DestFilePath & "\" & str_DestFileName) Then 
+         
+            If lng_Overwrite = e_Prompt Then 
+                bool_OverWrite = MsgBox("File Exists overwrite ?", vbQuestion Or vbYesNo) = vbYes 
+            Else 
+                bool_OverWrite = lng_Overwrite 
+            End If 
+         
+        Else 
+            bool_OverWrite = True 
+        End If 
+         
+        Call .copyfile(str_SourceFullPath, str_DestFilePath & "\", bool_OverWrite) 
+         
+    End With 
+ 
+    'Rename 
+    If str_DestFileName <> str_SourceFileName Then 
+         
+        If bool_OverWrite Then 
+             
+            On Error Resume Next 
+            Kill str_DestFilePath & "\" & str_DestFileName 
+            On Error GoTo 0 
+             
+        End If 
+         
+        Name str_DestFilePath & "\" & str_SourceFileName As str_DestFilePath & "\" & str_DestFileName 
+     
+    End If 
+ 
+End Function 
+   
+Function z_mFsoOpen( _ 
+        ) As Boolean 
  
     If fso_Object Is Nothing Then 
        Set fso_Object = CreateObject("Scripting.FileSystemObject") 
@@ -5405,7 +5514,8 @@ Function TableRecordByMap( _
     ByRef var_SourceInput As Variant, _ 
     ByRef tbl_MapTable As ListObject, _ 
     Optional ByRef wbk_Source As Variant, _ 
-    Optional ByRef lng_Direction As e_DirectionCopy = e_InsideTable) As Boolean 
+    Optional ByRef lng_Direction As e_DirectionCopy = e_InsideTable _ 
+        ) As Boolean 
      
     Dim arr_HeaderColumns 
     Dim arr_Map() 
