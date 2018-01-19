@@ -320,10 +320,12 @@ exit_ok:
 Exit Function 
 err_AtkError: 
   
-    If frm_GlErr.z_Show Then Resume 
+    If frm_GlErr.z_Show(Err) Then: Stop: Resume 
   
 End Function 
  
+  
+  
 Function PickerFolder( _ 
     ByRef rng_FilePath As Range, _ 
     Optional ByVal str_DialogText As String = "" _ 
@@ -3457,6 +3459,40 @@ Function EmailCopyFromDraft( _
  
 End Function 
  
+Function EmailRangePaste( _ 
+    ByRef obj_Email As Object, _ 
+    ByRef rng_ToCopy As Object, _ 
+    ByRef str_Identifier As String _ 
+    ) 
+  
+On Error GoTo Err 
+  
+    Dim obj_Selection As Object 'Word Selection 
+ 
+    Set obj_Selection = obj_Email.GetInspector.WordEditor.Windows(1).Selection 
+     
+    With obj_Selection.Find 
+        .ClearFormatting 
+        .MatchCase = True 
+        .Execute FindText:=str_Identifier 
+    End With 
+     
+    rng_ToCopy.Copy 
+    obj_Selection.Paste 
+   
+    DoEvents 
+    DoEvents 
+         
+    obj_Email.Save 
+     
+    Exit Function 
+ 
+Err: 
+    Debug.Assert False: Resume 
+  
+End Function 
+  
+  
 Function EmailTableFill( _ 
     ByRef obj_Email As Object, _ 
     ByRef tbl_Source As ListObject, _ 
@@ -3995,10 +4031,11 @@ Function EmailReplaceText( _
      
         For i_TextCursor = LBound(var_ReplaceWith) To UBound(var_ReplaceWith) 
             .htmlBody = Replace(.htmlBody, CStr(var_TextToReplace(i_TextCursor)), CStr(var_ReplaceWith(i_TextCursor))) 
+            .Subject = Replace(.Subject, CStr(var_TextToReplace(i_TextCursor)), CStr(var_ReplaceWith(i_TextCursor))) 
         Next 
          
         .Save 
-        .display 
+        .Display 
     End With 
  
 End Function 
