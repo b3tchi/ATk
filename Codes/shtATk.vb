@@ -36,6 +36,11 @@ Public Enum e_OutlookFlag
     e_NoFlag = 0 
 End Enum 
  
+Public Enum e_WordPasteAs 
+    e_Original = 1 
+    e_Picture = 13 
+End Enum 
+  
 Public Enum FieldType 
     e_General 
     e_Text 
@@ -3461,9 +3466,9 @@ End Function
  
 Function EmailRangePaste( _ 
     ByRef obj_Email As Object, _ 
+    ByRef str_Identifier As String, _ 
     ByRef rng_ToCopy As Object, _ 
-    ByRef str_Identifier As String _ 
-    ) 
+    Optional ByRef lng_PasteType As e_WordPasteAs = e_Original) 
   
 On Error GoTo Err 
   
@@ -3477,9 +3482,27 @@ On Error GoTo Err
         .Execute FindText:=str_Identifier 
     End With 
      
+    Select Case TypeName(rng_ToCopy) 
+     
+        Case "ListObject" 
+            rng_ToCopy.Range.Copy 
+        Case "Range" 
     rng_ToCopy.Copy 
+             
+    End Select 
+     
+     
+    Select Case lng_PasteType 
+        
+        Case e_Original 
     obj_Selection.Paste 
    
+        Case e_Picture 
+            Call obj_Selection.Range.PasteAndFormat(lng_PasteType) 
+             
+    End Select 
+     
+    
     DoEvents 
     DoEvents 
          
