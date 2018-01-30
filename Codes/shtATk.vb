@@ -82,9 +82,20 @@ Public Enum e_Action
     e_Prompt = 1 
 End Enum 
    
+Public Enum e_QueryParameter 
+    e_adBigInt = 20  'Indicates an eight-byte signed integer (DBTYPE_I8). 
+    e_adBoolean = 11  'Indicates a Boolean value (DBTYPE_BOOL). 
+    e_adChar = 129  'Indicates a string value (DBTYPE_STR). 
+    e_adDate = 7  'Indicates a date value (DBTYPE_DATE). A date is stored as a double, the whole part of which is the number of days since December 30, 1899, and the fractional part of which is the fraction of a day. 
+    e_adDouble = 5  'Indicates a double-precision floating-point value (DBTYPE_R8). 
+    e_adInteger = 3  'Indicates a four-byte signed integer (DBTYPE_I4). 
+    'e_adVarChar = 200  'Indicates a string value. 
+End Enum 
+     
 'Linked Applications 
 Dim app_Word As Object 'Word.Application 
 Dim app_Outlook As Object 
+Private fso_Object As Object 
  
 Dim bool_OutlookStarted As Boolean 
  
@@ -93,13 +104,9 @@ Private cc_WorkbookPaths As Collection
 Private cc_WorkbookIndexes As Collection 
  
 'TableLoopCollection 
-'Private cc_LoopedRangesIndexes As Collection 
-'Private cc_LoopedRanges As Collection 
 Private cc_TableLoopHeaders As Collection 
 Private cc_TableLoopCursors As Collection 
 Private cc_TableLoopLevel As Collection 
-'Private cc_TableLoopLevel As Collection 
- 
  
 'OutlookLoopCollection 
 Private cc_OutlookFolderItemIndexes As Collection 
@@ -112,16 +119,14 @@ Private lng_ApplicationScreen As Long
 Private lng_ApplicationCalculations  As Long 
 Private lng_ApplicationAlerts As Long 
  
+   
 Private Const adr_Calculations As String = "C1" 
 Private Const adr_RunLevel As String = "C2" 
  
 Private Const adr_LocalGitPath As String = "C5" 
 Private Const adr_IssueEmail As String = "C6" 
  
-Private fso_Object As Object 
- 
 Private lng_RunLevel As Long 
- 
  
 Private Declare Function SetCurrentDirectoryA Lib "kernel32" (ByVal lpPathName As String) As Long 
   
@@ -402,7 +407,7 @@ Private Function z_mOutlookGetFolder( _
         FoldersArray = Split(FolderPath, "\") 
          
          
-        Set SearchedFolder = app_Outlook.Session.Folders.Item(FoldersArray(0)) 
+        Set SearchedFolder = app_Outlook.session.Folders.Item(FoldersArray(0)) 
          
         If Not SearchedFolder Is Nothing Then 
             For i = 1 To UBound(FoldersArray, 1) 
@@ -810,16 +815,16 @@ Public Function DocumentReplaceText( _
         Set obj_Table = obj_WordDoc.tables(lng_TableCorsor) 
  
         Select Case obj_Table.Title 
-            Case 0:  If Not t_Table0 Is Nothing Then Call DocumentTableLoad(obj_Table, t_Table0, 0) 
+            Case 0: If Not t_Table0 Is Nothing Then Call DocumentTableLoad(obj_Table, t_Table0, 0) 
             Case 1: If Not t_Table1 Is Nothing Then Call DocumentTableLoad(obj_Table, t_Table1, 1) 
             Case 2: If Not t_Table2 Is Nothing Then Call DocumentTableLoad(obj_Table, t_Table2, 2) 
-            Case 3:  If Not t_Table3 Is Nothing Then Call DocumentTableLoad(obj_Table, t_Table3, 3) 
+            Case 3: If Not t_Table3 Is Nothing Then Call DocumentTableLoad(obj_Table, t_Table3, 3) 
             Case 4: If Not t_Table4 Is Nothing Then Call DocumentTableLoad(obj_Table, t_Table4, 4) 
             Case 5: If Not t_Table5 Is Nothing Then Call DocumentTableLoad(obj_Table, t_Table5, 5) 
-            Case 6:  If Not t_Table6 Is Nothing Then Call DocumentTableLoad(obj_Table, t_Table6, 6) 
+            Case 6: If Not t_Table6 Is Nothing Then Call DocumentTableLoad(obj_Table, t_Table6, 6) 
             Case 7: If Not t_Table7 Is Nothing Then Call DocumentTableLoad(obj_Table, t_Table7, 7) 
             Case 8: If Not t_Table8 Is Nothing Then Call DocumentTableLoad(obj_Table, t_Table8, 8) 
-            Case 9:  If Not t_Table9 Is Nothing Then Call DocumentTableLoad(obj_Table, t_Table9, 9) 
+            Case 9: If Not t_Table9 Is Nothing Then Call DocumentTableLoad(obj_Table, t_Table9, 9) 
         End Select 
      
     Next 
@@ -866,6 +871,7 @@ Public Function DocumentTableLoad(ByVal obj_Table As Object, ByVal t_Table As Li
     End With 
      
 End Function 
+ 
 Function MacroFinish(Optional bool_ForceFinish As Boolean = False) 
  
     DoEvents 
@@ -992,6 +998,7 @@ Function TableClearAll(ByVal tbl_Object As ListObject)
          
 Err: 
 End Function 
+ 
 Function TableClearVisible(ByVal tbl_Object As ListObject) 
  
     Dim rng_BodyToDelete As Range 
@@ -1651,70 +1658,26 @@ Err:
  
 End Function 
  
-Function TableAppendToTable( _ 
-                            ByVal tbl_Copy As ListObject, _ 
+Function TableAppendData( _ 
                             ByVal tbl_PasteAppend As ListObject, _ 
+    ByVal var_DataSource As Variant, _ 
                             Optional ByVal bool_Transpose As Boolean = False, _ 
                             Optional ByVal arr_HeaderMaskInput As Variant _ 
                             ) 
  
-    Dim lng_CalcActions As Long 
+    Application.Statusbar = IIf(bool_Transpose, "Transposing and ", "") & "Appending Data to table to " & tbl_PasteAppend.Name 
      
-    Application.Statusbar = IIf(bool_Transpose, "Transposing and ", "") & "Appending table " & tbl_Copy.Name & " to " & tbl_PasteAppend.Name 
- 
-    lng_CalcActions = Application.Calculation 
-    Application.Calculation = xlCalculationManual 
- 
 'CALCULATE ROWS TO COPY 
     On Error GoTo Err 
  
-    Dim arr_VisibleRows() 
-    ReDim arr_VisibleRows(0) 
-     
-    
-'CHECK SOURCE TABLE DATA 
-   If tbl_Copy.DataBodyRange Is Nothing Then Exit Function 
- 
 'PREPARE COPY 
-    Dim rng_Cursor As Range 
-    Dim arr_Copy 
+    Dim arr_CopyData 'data itself 
+    Dim arr_CopyHeader 'data columen names 
+    Dim arr_VisibleRows 'visible rows (used for filtered table ranges) 
      
-    Dim lng_RowCounter As Long 
-    Dim lng_CopyRowsCount& 
+    Call z_mSourceToArrays(var_DataSource, bool_Transpose, arr_CopyData, arr_CopyHeader, arr_VisibleRows) 
      
-    lng_RowCounter = 2 
- 
-    tbl_Copy.Range.Calculate 
- 
-    If bool_Transpose Then 
-     
-        arr_Copy = tbl_Copy.DataBodyRange.Value2 
-        arr_Copy = WorksheetFunction.Transpose(arr_Copy) 
-     
-        For Each rng_Cursor In tbl_Copy.HeaderRowRange.Offset(, 1).Resize(, tbl_Copy.HeaderRowRange.Count - 1) 
-            If rng_Cursor.EntireColumn.Hidden = False Then 
-                arr_VisibleRows(UBound(arr_VisibleRows)) = lng_RowCounter 
-                ReDim Preserve arr_VisibleRows(UBound(arr_VisibleRows) + 1) 
-            End If 
-             
-            lng_RowCounter = lng_RowCounter + 1 
-        Next 
-     
-    Else 
- 
-        For Each rng_Cursor In tbl_Copy.DataBodyRange.Resize(, 1) 
-            If rng_Cursor.EntireRow.Hidden = False Then 
-                 
-                arr_VisibleRows(UBound(arr_VisibleRows)) = lng_RowCounter 
-                ReDim Preserve arr_VisibleRows(UBound(arr_VisibleRows) + 1) 
-            End If 
-             
-            lng_RowCounter = lng_RowCounter + 1 
-        Next 
- 
-        arr_Copy = tbl_Copy.Range.Value2 
-    End If 
-     
+'EXIT IF EMPTY ROWS 
     If UBound(arr_VisibleRows) = 0 Then Exit Function ' nothing to append 
      
     ReDim Preserve arr_VisibleRows(UBound(arr_VisibleRows) - 1) 
@@ -1734,7 +1697,7 @@ Function TableAppendToTable( _
     ReDim arr_HeaderRelation(1 To UBound(arr_Paste, 2)) 
     ReDim arr_HeaderArrayFormula(1 To UBound(arr_Paste, 2)) 
      
-'IF THERE IS DATA MASK CONVERT TABLE HEADER TO IT 
+'IF THERE IS header names MASK CONVERT original TABLE HEADER TO IT 
     If Not IsMissing(arr_HeaderMaskInput) Then 
          
         Dim arr_HeaderMask() 
@@ -1753,16 +1716,14 @@ Function TableAppendToTable( _
  
     End If 
      
-     
-     
-'map header 
+'Map founded Header column names indexes 
     For c_AppendCursor = LBound(arr_Paste, 2) To UBound(arr_Paste, 2) 
          
         lng_ColumnInCopy = -1 
          
     'SEARCHING LOOP 
-        For c_CopyCursor = LBound(arr_Copy, 2) To UBound(arr_Copy, 2) 
-            If arr_Paste(1, c_AppendCursor) = arr_Copy(1, c_CopyCursor) Then 
+        For c_CopyCursor = LBound(arr_CopyHeader, 2) To UBound(arr_CopyHeader, 2) 
+            If arr_Paste(1, c_AppendCursor) = arr_CopyHeader(1, c_CopyCursor) Then 
                 lng_ColumnInCopy = c_CopyCursor 
                 Exit For 'Found 
             End If 
@@ -1776,7 +1737,7 @@ Function TableAppendToTable( _
     Dim lng_AppendRows As Long 
     lng_AppendRows = UBound(arr_Paste) 
      
-    'traspose array 
+'Merge original table data structure with new data 
     Dim arr_Append() 
     ReDim arr_Append(1 To UBound(arr_VisibleRows) + 1, 1 To UBound(arr_Paste, 2)) 
  
@@ -1785,7 +1746,7 @@ Function TableAppendToTable( _
         If arr_HeaderRelation(c_AppendCursor) <> "-1" Then 
              
             For c_CopyCursor = LBound(arr_VisibleRows) To UBound(arr_VisibleRows) 
-                arr_Append(c_CopyCursor + 1, c_AppendCursor) = arr_Copy(arr_VisibleRows(c_CopyCursor), arr_HeaderRelation(c_AppendCursor)) 
+                arr_Append(c_CopyCursor + 1, c_AppendCursor) = arr_CopyData(arr_VisibleRows(c_CopyCursor), arr_HeaderRelation(c_AppendCursor)) 
             Next 
         Else 
              
@@ -1801,7 +1762,7 @@ Function TableAppendToTable( _
      
     Next 
  
- 
+'Empty Table first line check 
     Dim lng_PasteOffset As Long 
     Dim lng_PasteResizeCorrection As Long 
  
@@ -1814,6 +1775,7 @@ Function TableAppendToTable( _
         End If 
     End If 
  
+'Define append area rows count 
     Dim rng_AppendArea As Range 
      
     Set rng_AppendArea = tbl_PasteAppend.Range.Offset(tbl_PasteAppend.Range.Rows.Count - lng_PasteResizeCorrection).Resize(UBound(arr_Append)) 
@@ -1821,9 +1783,7 @@ Function TableAppendToTable( _
     'RESIZE PASTE TABLE 
     Call tbl_PasteAppend.Resize(tbl_PasteAppend.Range.Resize((UBound(arr_Paste) - lng_PasteResizeCorrection) + (UBound(arr_VisibleRows) + 1))) 
      
-     
     rng_AppendArea = arr_Append 
-     
      
     'CHECK IF THERE WAS ANY ARRAY FORMULAS 
     For c_AppendCursor = LBound(arr_HeaderArrayFormula) To UBound(arr_HeaderArrayFormula) 
@@ -1851,6 +1811,177 @@ Err:
   'Resume 
 End Function 
  
+Private Function z_mSourceToArrays( _ 
+    ByVal obj_Source As Object, _ 
+    ByVal bool_Transpose As Boolean, _ 
+    ByRef var_Data As Variant, _ 
+    ByRef var_Header As Variant, _ 
+    ByRef var_VisibleRows As Variant _ 
+        ) As Boolean 
+ 
+    Dim str_TypeName As String 
+     
+    str_TypeName = TypeName(obj_Source) 
+ 
+    Dim arr_CopyTemp As Variant 
+    Dim arr_HeaderTemp As Variant 
+    Dim arr_VisibleRowsTemp() 
+     
+    ReDim arr_VisibleRowsTemp(0) 
+     
+    Dim rng_Cursor As Range 
+     
+    Dim lng_RowCounter As Long 
+    lng_RowCounter = 1 
+     
+    If Not bool_Transpose Then 
+     
+        Select Case str_TypeName 
+ 
+            Case "ListObject" 
+                 
+                'DATA 
+                'check if source contains data 
+                If obj_Source.DataBodyRange Is Nothing Then Exit Function 
+                 
+                Call obj_Source.Range.Calculate 
+                 
+                arr_CopyTemp = obj_Source.DataBodyRange.Value2 
+                 
+                'HEADER 
+                arr_HeaderTemp = obj_Source.HeaderRowRange.Value2 'header row as column 
+             
+                'VISIBLE ROWS 
+                For Each rng_Cursor In obj_Source.DataBodyRange.Resize(, 1) 
+                    If rng_Cursor.EntireRow.Hidden = False Then 
+                        arr_VisibleRowsTemp(UBound(arr_VisibleRowsTemp)) = lng_RowCounter 
+                        ReDim Preserve arr_VisibleRowsTemp(UBound(arr_VisibleRowsTemp) + 1) 
+                    End If 
+                       
+                    lng_RowCounter = lng_RowCounter + 1 
+                Next 
+             
+            Case "PivotTable" 
+                 
+                'DATA 
+                obj_Source.PivotCache.Refresh 
+                 
+                Dim rng_DataRange As Range 
+                  
+                Set rng_DataRange = Intersect(obj_Source.TableRange1, obj_Source.DataBodyRange.EntireRow) 
+                Set rng_DataRange = rng_DataRange.Resize(rng_DataRange.Rows.Count - Abs(CLng(obj_Source.RowGrand)), rng_DataRange.Columns.Count - Abs(CLng(obj_Source.ColumnGrand))) 
+                 
+                arr_CopyTemp = rng_DataRange.Value2 
+                 
+                'HEADER 
+                ReDim arr_HeaderTemp(1 To 1, 1 To rng_DataRange.Columns.Count) 
+                Dim lng_ColumnCounter As Long 
+                   
+                lng_ColumnCounter = 1 
+                 
+                For Each rng_Cursor In rng_DataRange.Resize(1).Offset(-1) 
+                    arr_HeaderTemp(1, lng_ColumnCounter) = rng_Cursor.Text 
+                   
+                    lng_ColumnCounter = lng_ColumnCounter + 1 
+                   
+                Next 
+                 
+                'VISIBLE ROWS 
+                ReDim arr_VisibleRowsTemp(0 To UBound(arr_CopyTemp)) 
+                 
+                For lng_RowCounter = 0 To UBound(arr_CopyTemp) - 1 
+                    arr_VisibleRowsTemp(lng_RowCounter) = lng_RowCounter + 1 
+                Next 
+ 
+ 
+            Case "Recordset" 
+             
+                'DATA 
+                arr_CopyTemp = obj_Source.GetRows 
+                arr_CopyTemp = WorksheetFunction.Transpose(arr_CopyTemp) 
+ 
+                'HEADER 
+                Dim fdl_Cursor As Object 
+                Dim lng_FieldCounter As Long 
+                ReDim arr_HeaderTemp(1 To 1, 1 To obj_Source.Fields.Count) 
+                 
+                lng_FieldCounter = 1 
+                 
+                For Each fdl_Cursor In obj_Source.Fields 
+ 
+                    arr_HeaderTemp(1, lng_FieldCounter) = fdl_Cursor.Name 
+                    lng_FieldCounter = lng_FieldCounter + 1 
+                Next 
+ 
+                'VISIBLE ROWS 
+                ReDim arr_VisibleRowsTemp(0 To UBound(arr_CopyTemp)) 
+ 
+                For lng_RowCounter = 0 To UBound(arr_CopyTemp) - 1 
+                     
+                    arr_VisibleRowsTemp(lng_RowCounter) = lng_RowCounter + 1 
+                     
+                Next 
+ 
+        End Select 
+ 
+    Else 
+     
+        Select Case str_TypeName 
+     
+            Case "ListObject" 
+                 
+                'DATA 
+                Call obj_Source.Range.Calculate 
+                 
+                arr_CopyTemp = obj_Source.Range.Offset(, 1).Resize(, obj_Source.HeaderRowRange.Count - 1).Value2 
+                arr_CopyTemp = WorksheetFunction.Transpose(arr_CopyTemp) 
+                 
+                'HEADER 
+                arr_HeaderTemp = WorksheetFunction.Transpose(obj_Source.Range.Resize(, 1).Value2) 'first column as header 
+                 
+                'VISIBLE ROWS 
+                For Each rng_Cursor In obj_Source.HeaderRowRange.Offset(, 1).Resize(, obj_Source.HeaderRowRange.Count - 1) 
+                    If rng_Cursor.EntireColumn.Hidden = False Then 
+                        arr_VisibleRowsTemp(UBound(arr_VisibleRowsTemp)) = lng_RowCounter 
+                        ReDim Preserve arr_VisibleRowsTemp(UBound(arr_VisibleRowsTemp) + 1) 
+                    End If 
+                       
+                    lng_RowCounter = lng_RowCounter + 1 
+                Next 
+               
+            Case "PivotTable" 
+             
+             
+            Case "Recordset" 
+     
+                 
+     
+        End Select 
+         
+    End If 
+     
+    var_Data = arr_CopyTemp 
+    var_Header = arr_HeaderTemp 
+    var_VisibleRows = arr_VisibleRowsTemp 
+     
+'DELETE ALL DATA 
+    Erase arr_CopyTemp 
+    Erase arr_HeaderTemp 
+    Erase arr_VisibleRowsTemp 
+ 
+End Function 
+ 
+Function TableAppendToTable( _ 
+                            ByVal tbl_Copy As ListObject, _ 
+                            ByVal tbl_PasteAppend As ListObject, _ 
+                            Optional ByVal bool_Transpose As Boolean = False, _ 
+                            Optional ByVal arr_HeaderMaskInput As Variant _ 
+                            ) 
+   
+    Call TableAppendData(tbl_PasteAppend, tbl_Copy, bool_Transpose, arr_HeaderMaskInput) 
+  
+End Function 
+ 
 Private Function z_ContainsCellType(ByVal rng_Target As Range, lng_CellType As XlCellType) As Boolean 
  
     z_ContainsCellType = False 
@@ -1869,7 +2000,6 @@ Err:
     End Select 
      
 End Function 
- 
  
 Function TableSort( _ 
                     ByVal tbl_Object As ListObject, _ 
@@ -2022,7 +2152,7 @@ Function TableSharePointLoad( _
     On Error GoTo Err: 
  
     Dim str_Name As String 
-  '  Dim WorksheetFunction 
+ 
     Dim rng_Address As Range 
  
      
@@ -2248,17 +2378,6 @@ Function TableLoopCursor( _
     'check if table exists 
     If Not z_mKeyExists(cc_TableLoopHeaders, str_TableKey) Then Exit Function 
      
-    'Dim lng_ItemCursor As Long 
-    'Dim lng_Row As Long 
-    'Dim lng_Column As Long 
- 
-    'lng_ItemCursor = cc_LoopedRangesIndexes.Item(str_DirPath & tbl_SourceTable.Name) 
- 
-    'lng_Row = cc_TableLoopCursors.Item(str_DirPath & tbl_SourceTable.Name).Item(lng_ItemCursor - 1) 
-    'lng_Column = cc_TableLoopHeaders.Item(str_DirPath & tbl_SourceTable.Name).Item(str_ColumnName) - 1 
-     
-    'Set TableLoopCursor = tbl_SourceTable.Range.Resize(1, 1).Offset(lng_Row, lng_Column) 
- 
     Set TableLoopCursor = rng_Cursor.Offset(0, cc_TableLoopHeaders.Item(str_TableKey).Item(str_ColumnName) - rng_Cursor.Column) 
  
 End Function 
@@ -2809,7 +2928,10 @@ FILE_OPENED:
      
 End Function 
  
-Private Function z_mWorkbookAlreadyOpen(ByRef wbk_Source As Workbook, Optional ByRef str_FileName As String = "") As Boolean 
+Private Function z_mWorkbookAlreadyOpen( _ 
+    ByRef wbk_Source As Workbook, _ 
+    Optional ByRef str_FileName As String = "" _ 
+        ) As Boolean 
  
     z_mWorkbookAlreadyOpen = False 
  
@@ -3263,10 +3385,7 @@ Function PivotCleanCache( _
     pvt_Object.PivotCache.Refresh 
     pvt_Object.PivotCache.MissingItemsLimit = lng_MissingFlag 
  
- 
 End Function 
- 
- 
  
 Function PivotAutofilter( _ 
     ByRef pvt_Object As PivotTable, _ 
@@ -3673,11 +3792,14 @@ Function EmailCreateNew( _
     Optional ByVal var_Bcc _ 
     ) As Boolean 
  
-    Dim app_Outlook As Object 'Outlook.Application 
+    , 
+    'Dim app_Outlook As Object 'Outlook.Application 
  
      
     'Setup Outlook 
-    Set app_Outlook = GetObject(, "Outlook.Application") 'Set app_Outlook = Outlook.Application 
+    'Set app_Outlook = GetObject(, "Outlook.Application") 'Set app_Outlook = Outlook.Application 
+    Call z_mLinkOutlook 
+     
     Set obj_Email = app_Outlook.CreateItem(0) 
      
     Dim str_HtmlBody$ 
@@ -4423,198 +4545,8 @@ Function PivotDataAppendToTable( _
                                 Optional ByVal arr_HeaderMask As Variant _ 
                                 ) 
  
-    Application.Statusbar = "Appending PivotDataTable " & pvt_Copy.Name & " to " & tbl_PasteAppend.Name 
-     
-    pvt_Copy.PivotCache.Refresh 
+    Call TableAppendData(tbl_PasteAppend, tbl_Copy, bool_Transpose, arr_HeaderMaskInput) 
  
-    Dim rng_DataRange As Range 
-    
-    Set rng_DataRange = Intersect(pvt_Copy.TableRange1, pvt_Copy.DataBodyRange.EntireRow) 
-    Set rng_DataRange = rng_DataRange.Resize(rng_DataRange.Rows.Count - Abs(CLng(pvt_Copy.RowGrand)), rng_DataRange.Columns.Count - Abs(CLng(pvt_Copy.ColumnGrand))) 
- 
-    Dim lng_CalcActions As Long 
-     
-    lng_CalcActions = Application.Calculation 
-    Application.Calculation = xlCalculationManual 
- 
-'CALCULATE ROWS TO COPY 
-    On Error GoTo Err 
- 
-    Dim arr_VisibleRows() 
-    ReDim arr_VisibleRows(0) 
-   
-'PREPARE COPY 
-    Dim rng_Cursor As Range 
-    Dim arr_Copy 
-     
-    Dim lng_RowCounter As Long 
-    Dim lng_CopyRowsCount& 
-     
-    lng_RowCounter = 2 'second row data start 1 reserved for header 
- 
-    For Each rng_Cursor In rng_DataRange.Resize(, 1) 
-             
-        arr_VisibleRows(UBound(arr_VisibleRows)) = lng_RowCounter 
-        ReDim Preserve arr_VisibleRows(UBound(arr_VisibleRows) + 1) 
- 
-        lng_RowCounter = lng_RowCounter + 1 
-    Next 
-     
-    ReDim Preserve arr_VisibleRows(UBound(arr_VisibleRows) - 1) 
- 
-    arr_Copy = rng_DataRange.Resize(rng_DataRange.Rows.Count + 1).Offset(-1).Value2 'copy data with header 
- 
-    If UBound(arr_VisibleRows) = 0 Then GoTo Exit_Function: ' nothing to append 
-     
-    Dim lng_ColumnCounter As Long 
-     
-    lng_ColumnCounter = 1 
- 
-  
-    For Each rng_Cursor In rng_DataRange.Resize(1).Offset(-1) 
-        arr_Copy(1, lng_ColumnCounter) = rng_Cursor.Text 
-     
-        lng_ColumnCounter = lng_ColumnCounter + 1 
-     
-    Next 
- 
-'PREPARE PASTE 
-    Dim arr_Paste As Variant 
-    arr_Paste = tbl_PasteAppend.Range.Formula 
-     
-    Dim arr_HeaderRelation() 
-    Dim arr_HeaderArrayFormula() 
-     
-    Dim c_AppendCursor As Long 
-    Dim c_CopyCursor As Long 
-     
-    Dim lng_ColumnInCopy As Long 
-     
-    ReDim arr_HeaderRelation(1 To UBound(arr_Paste, 2)) 
-    ReDim arr_HeaderArrayFormula(1 To UBound(arr_Paste, 2)) 
-     
-     
-'IF THERE IS DATA MASK CONVERT TABLE HEADER TO IT 
-    If Not IsMissing(arr_HeaderMask) Then 
-         
-        If TypeName(arr_HeaderMask) = "Range" Then 
-             
-            c_AppendCursor = 1 
-             
-            arr_HeaderMask.Calculate 
-             
-            For Each rng_Cursor In arr_HeaderMask 
-                arr_Paste(1, c_AppendCursor) = rng_Cursor.Text 
-                c_AppendCursor = c_AppendCursor + 1 
-            Next 
-        Else 
-            Call z_mCovertToSimpleArray(arr_HeaderMask) 
-         
-            For c_AppendCursor = LBound(arr_Paste, 2) To UBound(arr_Paste, 2) 
-                arr_Paste(1, c_AppendCursor) = arr_HeaderMask(c_AppendCursor - 1) 
-            Next 
- 
-        End If 
-     
-    End If 
-     
-     
-'MAP HEADER 
-    For c_AppendCursor = LBound(arr_Paste, 2) To UBound(arr_Paste, 2) 
-         
-        lng_ColumnInCopy = -1 
-         
-    'SEARCHING LOOP 
-        For c_CopyCursor = LBound(arr_Copy, 2) To UBound(arr_Copy, 2) 
-            If arr_Paste(1, c_AppendCursor) = arr_Copy(1, c_CopyCursor) Then 
-                lng_ColumnInCopy = c_CopyCursor 
-                Exit For 'Found 
-            End If 
-        Next 
-     
-        arr_HeaderArrayFormula(c_AppendCursor) = tbl_PasteAppend.HeaderRowRange.Resize(1, 1).Offset(1, c_AppendCursor - 1).HasArray 
-        arr_HeaderRelation(c_AppendCursor) = lng_ColumnInCopy 
-     
-    Next 
-     
-    Dim lng_AppendRows As Long 
-    lng_AppendRows = UBound(arr_Paste) 
-     
-    'traspose array 
-    Dim arr_Append() 
-    ReDim arr_Append(1 To UBound(arr_VisibleRows) + 1, 1 To UBound(arr_Paste, 2)) 
- 
-    For c_AppendCursor = LBound(arr_HeaderRelation) To UBound(arr_HeaderRelation) 
-         
-        If arr_HeaderRelation(c_AppendCursor) <> "-1" Then 
-             
-            For c_CopyCursor = LBound(arr_VisibleRows) To UBound(arr_VisibleRows) 
-                arr_Append(c_CopyCursor + 1, c_AppendCursor) = arr_Copy(arr_VisibleRows(c_CopyCursor), arr_HeaderRelation(c_AppendCursor)) 
-            Next 
-        Else 
-             
-            If arr_Paste(2, c_AppendCursor) Like "=*" Then 'extend formula 
-             
-                For c_CopyCursor = LBound(arr_VisibleRows) To UBound(arr_VisibleRows) 
-                    arr_Append(c_CopyCursor + 1, c_AppendCursor) = arr_Paste(2, c_AppendCursor) 
-                Next 
-             
-            End If 
- 
-        End If 
-     
-    Next 
- 
- 
-    Dim lng_PasteOffset As Long 
-    Dim lng_PasteResizeCorrection As Long 
- 
-    If tbl_PasteAppend.Range.Rows.Count = 2 Then 
- 
-        If z_ContainsCellType(tbl_PasteAppend.HeaderRowRange.Offset(1), xlCellTypeConstants) Then 
-            lng_PasteResizeCorrection = 0 
-        Else 
-            lng_PasteResizeCorrection = 1 
-        End If 
-    End If 
- 
-    Dim rng_AppendArea As Range 
-     
-    Set rng_AppendArea = tbl_PasteAppend.Range.Offset(tbl_PasteAppend.Range.Rows.Count - lng_PasteResizeCorrection).Resize(UBound(arr_Append)) 
-     
-'RESIZE PASTE TABLE 
-    Call tbl_PasteAppend.Resize(tbl_PasteAppend.Range.Resize((UBound(arr_Paste) - lng_PasteResizeCorrection) + (UBound(arr_VisibleRows) + 1))) 
-     
-     
-    rng_AppendArea = arr_Append 
-     
-     
-'CHECK IF THERE WAS ANY ARRAY FORMULAS 
-    For c_AppendCursor = LBound(arr_HeaderArrayFormula) To UBound(arr_HeaderArrayFormula) 
-        If arr_HeaderArrayFormula(c_AppendCursor) And arr_HeaderRelation(c_AppendCursor) = -1 Then 
-            rng_AppendArea.Resize(1, 1).Offset(, c_AppendCursor - 1).FormulaArray = arr_Paste(2, c_AppendCursor) 
-            rng_AppendArea.Resize(, 1).Offset(, c_AppendCursor - 1).FillDown 
-        End If 
-    Next 
-     
-    rng_AppendArea.Calculate 
- 
-    DoEvents 
-    DoEvents 
- 
-Exit_Function: 
- 
-    Application.Statusbar = False 
-    Exit Function 
-Err: 
-   
-    Debug.Print Err.Number & Err.Description 
-    Select Case Err.Number 
-        Case 1004 ' 
-        Case 0 
-    End Select 
-  'Resume 
-     
 End Function 
  
 Public Function xLinkExcelObjects() 
@@ -5439,8 +5371,10 @@ Function FileCopy( _
     'open file 
     Call z_mFsoOpen 
          
-    'rename file if needed 
+    'rename file if needed (not missing) 
+    If Not IsMissing(var_FileName) Then 
     str_DestFileName = CStr(z_mCovertToSimpleArray(var_FileName)(0)) 
+    End If 
          
     'Copy File 
     With fso_Object 
@@ -5464,7 +5398,7 @@ Function FileCopy( _
     End With 
  
     'Rename 
-    If str_DestFileName <> str_SourceFileName Then 
+    If Not IsMissing(var_FileName) Then 
          
         If bool_OverWrite Then 
              
@@ -5821,4 +5755,108 @@ Function zLocalGitCodeUpdate() As Boolean
 End Function 
  
  
+
+Function ConnectionOpen(ByRef db As Object, ByVal dbPath As Variant, Optional ByVal bool_CopyNetworkDb As Boolean = True) As Boolean 
+ 
+    Dim connDb As Object 
+    Set connDb = CreateObject("ADODB.Connection") 
+     
+'    Dim connDb As Object 'ADODB.Connection 
+'    Set connDb = New ADODB.Connection ' CreateObject("ADODB.Connection") 
+     
+    Dim strConnection As String 
+     
+    Dim str_dbPath As String 
+     
+    str_dbPath = z_mCovertToSimpleArray(dbPath)(0) 
+     
+    If bool_CopyNetworkDb Then 
+        Call Me.FileCopy(Environ("Temp"), , str_dbPath, e_Yes) 
+     
+        str_dbPath = Environ("Temp") & "\" & Mid(str_dbPath, InStrRev(str_dbPath, "\") + 1) 
+    End If 
+ 
+    'connDb.Provider = "" 
+    strConnection = "Provider=Microsoft.ACE.OLEDB.12.0;" _ 
+         & "Data Source = " & str_dbPath 
+ 
+    Call connDb.Open(strConnection) 
+     
+    Set db = connDb 
+ 
+End Function 
+  
+  
+Function ConnectionClose(ByRef db As Object) As Boolean 
+ 
+    db.Close 
+    Set db = Nothing 
+ 
+End Function 
+  
+  
+Function QueryInit(ByRef rs As Object, ByVal rs_Name As Variant, ByRef Connection As Object) 
+     
+    Dim cmd As Object 'ADODB.Command 
+    Dim str_RsCommand As String 
+     
+    Const adOpenStatic As Long = 3 
+    Const adLockReadOnly As Long = 1 
+ 
+    'Change Name 
+    str_RsCommand = z_mCovertToSimpleArray(rs_Name)(0) 
+     
+    Set cmd = CreateObject("ADODB.Command") 
+    'Set cmd = New ADODB.Command 
+     
+    cmd.ActiveConnection = Connection 
+    cmd.CommandText = rs_Name 
+    cmd.CommandType = 4 'adCmdStoredProc 
+     
+    'cmd.NamedParameters = True 
+    'cmd.Parameters.Refresh 
+ 
+    Set rs = cmd 
+ 
+    Set cmd = Nothing 
+ 
+ 
+End Function 
+ 
+Function QuerySetParameter(ByRef rs As Object, ByVal par_Name As Variant, ByVal par_Value As Variant, ByVal par_ValueType As e_QueryParameter) 
+    Dim obj_Par As Object 'ADODB.parameter 
+ 
+    Set obj_Par = rs.CreateParameter(par_Name, par_ValueType, 1) 'adParamInput 
+ 
+    obj_Par.Value = par_Value 
+     
+    Call rs.Parameters.Append(obj_Par) 
+ 
+    Set obj_Par = Nothing 
+ 
+End Function 
+ 
+Function QueryExecute(ByRef Command As Object) 
+ 
+    'Dim rs_temp As ADODB.Recordset 
+    'Set rs_temp = New ADODB.Recordset 
+ 
+    Dim rs_temp As Object 
+    Set rs_temp = CreateObject("ADODB.RecordSet") 
+ 
+    Call rs_temp.Open(Command, , 3, 1) 'adOpenStatic,adLockReadOnly 
+ 
+    If Not rs_temp.BOF And Not rs_temp.EOF Then 
+         
+        rs_temp.MoveLast 
+        rs_temp.MoveFirst 
+  
+    End If 
+  
+    Set Command = Nothing 
+    Set Command = rs_temp 
+ 
+    Set rs_temp = Nothing 
+ 
+End Function 
 
