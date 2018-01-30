@@ -1193,8 +1193,8 @@ Function TableAutofilterDate( _
                         ByRef tbl_Object As ListObject, _ 
                         Optional ByRef str_ColumnName As String = "", _ 
                         Optional ByRef arr_CriteriaInput As Variant, _ 
-                        Optional ByVal InvertedAutoFilter As e_FilterType = e_ShowOnlyCriteriaItems, _ 
-                        Optional ByVal RemoveAutoFilter As e_ResetFilter = e_LeaveCurrentFilters _
+    Optional ByRef InvertedAutoFilter As e_FilterType = e_ShowOnlyCriteriaItems, _ 
+    Optional ByRef RemoveAutoFilter As e_ResetFilter = e_LeaveCurrentFilters _ 
                         ) 
      
     On Error GoTo Err: 
@@ -5690,6 +5690,8 @@ End Function
  
 Function zLocalGitCodeImport(ByVal str_ModuleName, Optional ByRef wbk_Data As Workbook) As Boolean 
  
+    On Error GoTo Err: 
+  
     zLocalGitCodeImport = False 
  
     'check if not importing ATK 
@@ -5722,6 +5724,15 @@ Function zLocalGitCodeImport(ByVal str_ModuleName, Optional ByRef wbk_Data As Wo
      
     zLocalGitCodeImport = True 
  
+Err: 
+ 
+    If Err.Number <> 0 Then 
+     
+        Debug.Print str_ModuleName & "_" & Err.Description 
+        Resume Err 
+     
+    End If 
+  
 End Function 
  
 Function zLocalGitCodeUpdate() As Boolean 
